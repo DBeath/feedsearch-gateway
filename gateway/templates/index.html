@@ -1,0 +1,88 @@
+<!DOCTYPE <html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Feedsearch</title>
+
+  <meta name="description" content="An API service for finding RSS and JSON feeds on websites">
+  <meta property="og:title" content="Feedsearch - RSS and JSON feed search">
+  <meta property="og:description" content="An API service for finding RSS and JSON feeds on websites">
+  <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+
+  <link rel="icon" href="{{ url_for('static', filename='rss.ico') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+</head>
+<body>
+  <div id="container">
+    <header id="header" role="banner">
+      <h1 id="brand"><a href="{{ url_for('index') }}" title="Feedsearch">
+        Feedsearch 
+        <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" height=".8em" width=".8em"
+        viewBox="0 0 310 310" style="enable-background:new 0 0 310 310;" xml:space="preserve">
+          <g id="XMLID_788_">
+            <path id="XMLID_789_" d="M90.244,264.828C90.244,240.11,70.139,220,45.427,220c-24.715,0-44.822,20.11-44.822,44.828
+              c0,24.714,20.107,44.82,44.822,44.82C70.139,309.648,90.244,289.542,90.244,264.828z"/>
+            <path id="XMLID_790_" d="M5.648,169.43c35.961,0,69.782,14.066,95.231,39.605c25.45,25.583,39.467,59.648,39.467,95.92
+              c0,2.762,2.238,5,5,5h57.486c2.762,0,5-2.238,5-5c0-111.952-90.699-203.031-202.185-203.031c-2.762,0-5,2.238-5,5v57.505
+              C0.648,167.191,2.887,169.43,5.648,169.43z"/>
+            <path id="XMLID_791_" d="M5.726,0c-2.762,0-5,2.238-5,5v57.495c0,2.762,2.238,5,5,5c130.24,0,236.199,106.544,236.199,237.505
+              c0,2.762,2.238,5,5,5h57.471c2.762,0,5-2.238,5-5C309.396,136.822,173.17,0,5.726,0z"/>
+          </g>
+        </svg>
+        </a>
+      </h1>
+      <h2 id="subtitle">An API for searching sites for RSS and JSON feeds.</h2>
+    </header>
+
+    <main id="content">
+      <div>
+        <p>Feedsearch provides a simple API for searching websites for RSS and JSON feeds. 
+        It's the library that runs the feed search function at <a href="https://www.auctorial.com">Auctorial</a>.</p>
+
+        <h3 class="subheading">Usage</h3>
+        <p>Make a GET request to <a href="{{ url_for('run_search', url='arstechnica.com', _external=true)}}">{{ url_for('run_search', _external=true)}}</a>
+        with a "url" value in the querystring containing the URL you'd like to search:</p>
+        <pre>curl {{ url_for('run_search', url='arstechnica.com', _external=true)}}</pre>
+        <p>It returns a JSON list of found feeds, with attached metadata about the feed.</p>
+
+<pre>[
+  {
+    "bozo": 0, 
+    "content_type": "text/xml; charset=UTF-8", 
+    "description": "Serving the Technologist for more than a decade. IT news, reviews, and analysis.", 
+    "favicon": "https://cdn.arstechnica.net/favicon.ico", 
+    "favicon_data_uri": "", 
+    "hub": "http://pubsubhubbub.appspot.com/", 
+    "is_push": true, 
+    "score": 4, 
+    "self_url": "http://feeds.arstechnica.com/arstechnica/index", 
+    "site_name": "Ars Technica", 
+    "site_url": "https://arstechnica.com/", 
+    "title": "Ars Technica", 
+    "url": "http://feeds.arstechnica.com/arstechnica/index/", 
+    "version": "rss20"
+  }
+]</pre>
+
+      <h3 class="subheading">Documentation</h3>
+      <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 
+        and is available as a Python package on <a href="https://pypi.python.org/pypi/feedsearch">PyPI</a>.</p>
+      <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch">Feedsearch Github repository</a>.</p>
+
+      </div>
+    </main>
+  </div>
+
+  
+
+  <footer>
+    <p><a href="{{ url_for('index') }}">Feedsearch</a> - search for RSS and JSON feeds. © 2017 <a href="https://davidbeath.com">David Beath</a></p>
+    <p>Icons made by <a href="http://www.freepik.com" title="Freepik">Freepik</a> 
+      from <a href="https://www.flaticon.com/free-icon/rss_152818" title="Flaticon">www.flaticon.com</a> is licensed 
+      by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></p>
+  </footer>
+</body>
+</html>
