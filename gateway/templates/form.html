@@ -1,0 +1,22 @@
+
+<h3 class="subheading">Search for Feeds</h3>
+<form id="searchform" action="/search" method="GET">
+  <input type="hidden" name="result" value="true">
+  <input
+    id="search-input" 
+    name="url"
+    placeholder="Site or Feed URL"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+    type="text">
+  <button id="search-button" class="button" type="submit">Search</button>
+</form>
+
+<div id="examples">
+  Examples: 
+  <a href="{{ url_for('search_api', url='arstechnica.com', result='true') }}">arstechnica.com</a>,
+  <a href="{{ url_for('search_api', url='jsonfeed.org', result='true') }}">jsonfeed.org</a>,
+  <a href="{{ url_for('search_api', url='xkcd.com', result='true') }}">xkcd.com</a>
+</div>

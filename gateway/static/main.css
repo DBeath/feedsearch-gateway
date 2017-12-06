@@ -11,13 +11,15 @@ body {
 
 #container {
     margin: 1em auto;
-    max-width: 700px;
     padding: 0.8em;
 }
 
 #header {
     border-bottom: 1px solid #DDD;
     margin-bottom: 1.5em;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 #brand {
@@ -82,4 +84,69 @@ h1 {
 footer {
     text-align: center;
     font-size: 0.8em;
+}
+
+#content {
+    max-width: 850px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#search-input {
+    padding: 0.5em 0.6em;
+    display: inline-block;
+    border: 1px solid #ccc;
+    box-shadow: inset 0 1px 3px #ddd;
+    border-radius: 4px;
+    vertical-align: middle;
+    box-sizing: border-box;
+    width: 50%;
+}
+
+#search-input:focus {
+    outline: 0;
+    border-color: #129FEA;
+}
+
+input {
+    font-size: 80%;
+}
+
+.button {
+    line-height: normal;
+    white-space: nowrap;
+    text-rendering: auto;
+    font-family: Arial;
+    font-size: 16px; 
+    padding: 8px 21px 9px 21px;
+    border: 0;
+    background-color: rgb(33, 133, 208);
+    color: rgb(255, 255, 255); 
+    border-radius: 3px;
+    font-weight: 700;
+}
+
+.button:hover,
+.button:focus {
+    filter: alpha(opacity=90);
+    /* csslint ignore:end */
+    background-image: -webkit-linear-gradient(transparent, rgba(0,0,0, 0.05) 40%, rgba(0,0,0, 0.10));
+    background-image: linear-gradient(transparent, rgba(0,0,0, 0.05) 40%, rgba(0,0,0, 0.10));
+}
+
+#examples {
+    margin-top: .5em;
+    margin-bottom: 1em;
+    font-size: 1em;
+    color: rgba(0, 0, 0, 0.55);
+}
+
+#results-header {
+    font-size: 1.1em;
+    margin: .5em 0 0 0;
+    color: rgba(0, 0, 0, 0.7);
+}
+
+#results {
+    margin-top: .2em;
 }
