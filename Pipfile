@@ -15,6 +15,7 @@ zappa = "*"
 feedsearch = "*"
 flask = "*"
 marshmallow = "*"
+"flask-s3" = "*"
 
 
 [requires]
