@@ -1,6 +1,61 @@
 {% extends 'index.html' %}
 
 {% block results %}
-<h4 id="results-header">{{url}} Feeds</h4>
-<pre id="results">{{feeds}}</pre>
+
+{% if feeds %}
+  <h4 id="results-header">
+    {% if feeds[0].site_name and feeds[0].site_url %}
+      <a href="{{feeds[0].site_url}}">{{feeds[0].site_name}}</a> Feeds
+    {% else %}
+      {{url}} Feeds
+    {% endif %}
+  </h4>
+  <ul id="results-list">
+    {% for feed in feeds %}
+      <li>
+        {% if feed.title %}
+          {{feed.title}}: <a href="{{feed.url}}">{{feed.url}}</a>
+        {% else %}
+          <a href="{{feed.url}}">{{feed.url}}</a>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <button type="button" id="showhidebutton" onclick="showhide()" value="Show JSON result">Show JSON result &#129131;</button>
+  <div id="results-div">
+    <pre id="results" class="hidden hide">{{json}}</pre>
+  </div>
+{% else %}
+  <p>No feeds found at {{url}}</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showhide() {
+  const hide_text = 'Hide JSON result &#129129;';
+  const show_text = 'Show JSON result &#129131;';
+
+  if (document.getElementById) {
+    let element = document.getElementById('results');
+    let button = document.getElementById('showhidebutton');
+    if (element.classList.contains('hide')) {
+      element.classList.remove('hide');
+      element.classList.add('visible');
+      button.value = hide_text;
+      button.innerHTML = hide_text;
+    } else {
+      element.classList.remove('visible');
+      element.classList.add('hide');
+      button.value = show_text;
+      button.innerHTML = show_text;
+    }
+    if (element.classList.contains('hidden')) {
+      element.classList.remove('hidden');
+    }
+  }
+}
+</script>
 {% endblock %}
