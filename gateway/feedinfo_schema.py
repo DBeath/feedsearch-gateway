@@ -1,6 +1,7 @@
 from feedsearch.feedinfo import FeedInfo
 from marshmallow import Schema, fields, post_load
 
+
 class FeedInfoSchema(Schema):
     url = fields.Url()
     site_url = fields.String(allow_none=True)

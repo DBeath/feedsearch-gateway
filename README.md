@@ -10,4 +10,4 @@ Deploy with:
 
 Upload static assets to S3:
 
-    python upload_s3_assets.py production
+    flask upload

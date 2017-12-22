@@ -36,6 +36,13 @@
   }
 ]</pre>
 
+  <p>The API accepts the following query parameters:</p>
+  <ul>
+    <li><b>url</b>: The URL to search. Will return 400 Bad Request if not set.</li>
+    <li><b>info</b>: Returns all feed metadata as above. Defaults True.</li>
+    <li><b>checkall</b>: Checks all the links at the given URL for feeds, and attempts a few guesses. Defaults False.</li>
+  </ul>
+
   <h3 class="subheading">Documentation</h3>
   <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 
   and is available as a Python package on <a href="https://pypi.python.org/pypi/feedsearch">PyPI</a>.</p>
