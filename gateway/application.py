@@ -22,10 +22,11 @@ def index():
 @app.route('/search', methods=['GET'])
 def search_api():
     url = request.args.get('url', '', type=str)
-    render_result = request.args.get('result', False, type=bool)
-    show_time = request.args.get('time', False, type=bool)
-    info = request.args.get('info', True, type=bool)
-    check_all = request.args.get('checkall', False, type=bool)
+    render_result = str_to_bool(request.args.get('result', 'false', type=str))
+    show_time = str_to_bool(request.args.get('time', 'false', type=str))
+    info = str_to_bool(request.args.get('info', 'true', type=str))
+    check_all = str_to_bool(request.args.get('checkall', 'false', type=str))
+    favicon = str_to_bool(request.args.get('favicon', 'false', type=str))
 
     if not url:
         response = jsonify({'error': 'No URL in Request'})
@@ -34,7 +35,7 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    feed_list = search(url, info=info, check_all=check_all)
+    feed_list = search(url, info=info, check_all=check_all, favicon_data_uri=favicon)
 
     result, errors = FEED_INFO_SCHEMA.dump(feed_list)
 
@@ -59,6 +60,10 @@ def search_api():
 
 def get_pretty_print(json_object):
     return json.dumps(json_object, sort_keys=True, indent=2, separators=(',', ': '))
+
+
+def str_to_bool(str):
+    return str.lower() in ('true', 't', 'yes', 'y', '1')
 
 
 @app.cli.command('upload')

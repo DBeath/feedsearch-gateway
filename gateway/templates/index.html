@@ -24,7 +24,9 @@
     "description": "Serving the Technologist for more than a decade. IT news, reviews, and analysis.", 
     "favicon": "https://cdn.arstechnica.net/favicon.ico", 
     "favicon_data_uri": "", 
-    "hub": "http://pubsubhubbub.appspot.com/", 
+    "hubs": [
+      "http://pubsubhubbub.appspot.com/"
+    ],
     "is_push": true, 
     "score": 4, 
     "self_url": "http://feeds.arstechnica.com/arstechnica/index", 
@@ -39,8 +41,9 @@
   <p>The API accepts the following query parameters:</p>
   <ul>
     <li><b>url</b>: The URL to search. Will return 400 Bad Request if not set.</li>
-    <li><b>info</b>: Returns all feed metadata as above. Defaults True.</li>
+    <li><b>info</b>: Returns all feed metadata as above. Defaults True. If False, only found URLs are returned.</li>
     <li><b>checkall</b>: Checks all the links at the given URL for feeds, and attempts a few guesses. Defaults False.</li>
+    <li><b>favicon</b>: Returns favicon as a Data Uri. Defaults False.</li>
   </ul>
 
   <h3 class="subheading">Documentation</h3>
