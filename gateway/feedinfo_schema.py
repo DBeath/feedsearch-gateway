@@ -9,7 +9,7 @@ class FeedInfoSchema(Schema):
     description = fields.String(allow_none=True)
     site_name = fields.String(allow_none=True)
     favicon = fields.String(allow_none=True)
-    hub = fields.String(allow_none=True)
+    hubs = fields.List(fields.String(), allow_none=True)
     is_push = fields.Boolean(allow_none=True)
     content_type = fields.String(allow_none=True)
     bozo = fields.Integer(allow_none=True)
