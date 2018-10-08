@@ -10,13 +10,19 @@
   <meta property="og:description" content="An API service for finding RSS and JSON feeds on websites">
   <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon.png') }}">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}"> -->
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='normalize.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='skeleton.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}"> -->
+  {% assets "css_all" %}
+    <link rel="stylesheet" href="{{ ASSET_URL }}">
+  {% endassets %}
 
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 </head>
 <body>
-  <div id="container">
+  <div class="container">
     <header id="header" role="banner">
       <h1 id="brand"><a href="{{ url_for('index') }}" title="Feedsearch">
         Feedsearch 

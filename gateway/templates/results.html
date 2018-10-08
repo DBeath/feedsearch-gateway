@@ -5,9 +5,9 @@
 {% if feeds %}
   <h4 id="results-header">
     {% if feeds[0].site_name and feeds[0].site_url %}
-      <a href="{{feeds[0].site_url}}">{{feeds[0].site_name}}</a> Feeds
+      Feeds for <a href="{{feeds[0].site_url}}">{{feeds[0].site_name}}</a>
     {% else %}
-      {{url}} Feeds
+      Feeds for <a href="{{url}}">{{url}}</a>
     {% endif %}
   </h4>
   <ul id="results-list">
@@ -22,9 +22,14 @@
     {% endfor %}
   </ul>
 
-  <button type="button" id="showhidebutton" onclick="showhide()" value="Show JSON result">Show JSON result &#129131;</button>
+  <button 
+    type="button"
+    id="showhidebutton"
+    onclick="showhide()"
+    value="Show JSON result"
+    class="button">Show JSON result &#129131;</button>
   <div id="results-div">
-    <pre id="results" class="hidden hide">{{json}}</pre>
+    <pre id="results" class="hidden hide u-max-full-width"><code>{{json}}</code></pre>
   </div>
 {% else %}
   <p>No feeds found at {{url}}</p>

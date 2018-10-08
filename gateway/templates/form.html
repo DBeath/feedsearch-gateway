@@ -5,19 +5,21 @@
   <input
     id="search-input" 
     name="url"
-    placeholder="Site or Feed URL"
+    placeholder="Site or Feed URL, e.g. arstechnica.com"
     autocomplete="off"
     autocorrect="off"
     autocapitalize="off"
     spellcheck="false"
     type="text"
+    class="u-full-width"
     required>
-  <button id="search-button" class="button" type="submit">Search</button>
+  <button id="search-button" class="button button-primary" type="submit">Search</button>
 </form>
 
 <div id="examples">
   Examples: 
-  <a href="{{ url_for('search_api', url='arstechnica.com', result='true') }}">arstechnica.com</a>,
+  <a href="{{ url_for('search_api', url='https://arstechnica.com', result='true') }}">https://arstechnica.com</a>,
   <a href="{{ url_for('search_api', url='jsonfeed.org', result='true') }}">jsonfeed.org</a>,
-  <a href="{{ url_for('search_api', url='xkcd.com', result='true') }}">xkcd.com</a>
+  <a href="{{ url_for('search_api', url='xkcd.com', result='true') }}">xkcd.com</a>,
+  <a href="{{ url_for('search_api', url='https://en.wikipedia.org', result='true') }}">https://en.wikipedia.org</a>
 </div>

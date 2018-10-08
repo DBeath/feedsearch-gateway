@@ -2,22 +2,33 @@
 
 {% block content %}
 <div>
-  <p>Feedsearch provides a simple API for searching websites for RSS and JSON feeds. 
+  <p>Feedsearch provides a simple API for searching websites for 
+    <a href="https://en.wikipedia.org/wiki/RSS">RSS</a>, 
+    <a href="https://en.wikipedia.org/wiki/Atom_(Web_standard)">Atom</a>, and 
+    <a href="https://jsonfeed.org/">JSON</a> feeds. 
   It's the library that runs the feed search function at <a href="https://www.auctorial.com">Auctorial</a>.</p>
+</div>
 
+<div id="searchform_div">
   {% include 'form.html' %}
+</div>
 
+<div id="results_div">
   {% block results %}
   
   {% endblock %}
+</div>
+
+<div id="documentation_div">
 
   <h3 class="subheading">API Usage</h3>
   <p>Make a GET request to <a href="{{ url_for('search_api', url='arstechnica.com', _external=true)}}">{{ url_for('search_api', _external=true)}}</a>
   with a "url" value in the querystring containing the URL you'd like to search:</p>
-  <pre>curl {{ url_for('search_api', url='arstechnica.com', _external=true)}}</pre>
+  <pre><code>curl {{ url_for('search_api', url='arstechnica.com', _external=true)}}</code></pre>
+  <p>If the scheme (e.g. "https://") is not provided in the "url" value then the scheme will default to "http://".</p>
   <p>The API returns a JSON list of found feeds, with attached metadata about the feed.</p>
 
-<pre>[
+<pre><code>[
   {
     "bozo": 0, 
     "content_type": "text/xml; charset=UTF-8", 
@@ -36,14 +47,14 @@
     "url": "http://feeds.arstechnica.com/arstechnica/index/", 
     "version": "rss20"
   }
-]</pre>
+]</code></pre>
 
   <p>The API accepts the following query parameters:</p>
   <ul>
-    <li><b>url</b>: The URL to search. Will return 400 Bad Request if not set.</li>
-    <li><b>info</b>: Returns all feed metadata as above. Defaults True. If False, only found URLs are returned.</li>
+    <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not set.</li>
+    <li><b>info</b>: Returns all feed metadata as above. Defaults True. If False, only found URLs are returned, and all other values will be empty or default.</li>
     <li><b>checkall</b>: Checks all the links at the given URL for feeds, and attempts a few guesses. Defaults False.</li>
-    <li><b>favicon</b>: Returns favicon as a Data Uri. Defaults False.</li>
+    <li><b>favicon</b>: Returns favicon as a <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a>. Defaults False.</li>
   </ul>
 
   <h3 class="subheading">Documentation</h3>

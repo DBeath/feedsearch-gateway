@@ -187,14 +187,14 @@ ul#results-list > li {
 }
 
 .visible {
-    animation: fadein 0.5s;
+    animation: fadein 0.3s;
     animation-fill-mode: forwards;
     /* -webkit-animation: fadein 0.5s ;
 	-webkit-animation-fill-mode: forwards;  */
 }
 
 .hide {
-    animation: fadeout 0.5s;
+    animation: fadeout 0.3s;
     animation-fill-mode: forwards;
     /* -webkit-animation: fadeout 0.5s ;
 	-webkit-animation-fill-mode: forwards; */
@@ -202,7 +202,7 @@ ul#results-list > li {
 
 @keyframes fadeout {
     0% {
-        max-height: 999px;
+        max-height: 10000px;
         opacity: 1;
         visibility: visible;
     }
@@ -222,7 +222,7 @@ ul#results-list > li {
         visibility: hidden;
     }
     100% {
-        max-height: 999px;
+        max-height: 100%;
         opacity: 1;
         visibility: visible;
     }

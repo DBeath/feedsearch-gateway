@@ -8,16 +8,35 @@ from feedsearch import search
 from feedsearch.lib import coerce_url
 from flask import Flask, jsonify, render_template, request
 from flask_s3 import FlaskS3
+from flask_assets import Environment, Bundle
 
 from .feedinfo_schema import FEED_INFO_SCHEMA
 
 app = Flask(__name__)
+
 app.config['FLASKS3_BUCKET_NAME'] = 'zappa-mrxw2pac1'
+
+if not app.config['DEBUG']:
+    app.config['FLASK_ASSETS_USE_S3'] = True
+
 s3 = FlaskS3(app)
+
+css_assets = Bundle(
+    'normalize.css',
+    'skeleton.css',
+    'custom.css',
+    filters='cssmin',
+    output='packed.min.%(version)s.css'
+)
+
+assets = Environment(app)
+assets.register('css_all', css_assets)
+
 
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
+
 
 @app.route('/search', methods=['GET'])
 def search_api():
