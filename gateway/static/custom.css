@@ -1,3 +1,7 @@
+html {
+    display: block;
+}
+
 pre {
     white-space: pre-wrap;
     overflow: hidden;

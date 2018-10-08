@@ -15,6 +15,12 @@ from .feedinfo_schema import FEED_INFO_SCHEMA
 app = Flask(__name__)
 
 app.config['FLASKS3_BUCKET_NAME'] = 'zappa-mrxw2pac1'
+app.config['FLASKS3_GZIP'] = True
+app.config['FLASKS3_GZIP_ONLY_EXTS'] = ['.css', '.js']
+app.config['FLASKS3_FORCE_MIMETYPE'] = True
+app.config['FLASKS3_HEADERS'] = {
+    'Cache-Control': 'max-age=2628000',
+}
 
 if not app.config['DEBUG']:
     app.config['FLASK_ASSETS_USE_S3'] = True
