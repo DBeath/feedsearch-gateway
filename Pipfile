@@ -8,11 +8,11 @@ cssmin = "*"
 
 [packages]
 zappa = "*"
-feedsearch = "*"
 flask = "*"
 marshmallow = "*"
 "flask-s3" = "*"
 flask-assets = "*"
+feedsearch = "*"
 
 [requires]
 python_version = "3.6"

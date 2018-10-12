@@ -60,7 +60,12 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    feed_list = search(url, info=info, check_all=check_all, favicon_data_uri=favicon)
+    feed_list = search(
+        url,
+        info=info,
+        check_all=check_all,
+        favicon_data_uri=favicon
+    )
 
     result, errors = FEED_INFO_SCHEMA.dump(feed_list)
 
