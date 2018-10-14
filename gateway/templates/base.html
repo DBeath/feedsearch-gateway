@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
   <style>
     html {
@@ -10,6 +11,7 @@
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0066ff"/>
 
   <title>Feedsearch - RSS, Atom, and JSON Feed Search API</title>
 
@@ -18,6 +20,7 @@
   <meta property="og:title" content="Feedsearch - RSS, Atom, and JSON Feed Search API">
   <meta property="og:description" content="An API service for finding RSS, Atom, and JSON feeds on websites.">
   <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  
 
   <link rel="canonical" href="https://feedsearch.auctorial.com">
 
@@ -60,10 +63,10 @@
   </div>
 
   <footer>
-    <p><a href="{{ url_for('index') }}">Feedsearch</a> - search for RSS and JSON feeds. © 2018 <a href="https://davidbeath.com">David Beath</a></p>
+    <p><a href="{{ url_for('index') }}">Feedsearch</a> - search for RSS, Atom, and JSON feeds. © 2018 <a href="https://davidbeath.com">David Beath</a></p>
     <p>Icons made by <a href="http://www.freepik.com" title="Freepik">Freepik</a> 
       from <a href="https://www.flaticon.com/free-icon/rss_152818" title="Flaticon">www.flaticon.com</a> is licensed 
-      by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank">CC 3.0 BY</a></p>
+      by <a href="http://creativecommons.org/licenses/by/3.0/" title="Creative Commons BY 3.0" target="_blank" rel="noopener">CC 3.0 BY</a></p>
   </footer>
 
   {% block scripts %}
