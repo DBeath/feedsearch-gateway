@@ -12,7 +12,7 @@ flask = "*"
 marshmallow = "*"
 "flask-s3" = "*"
 flask-assets = "*"
-feedsearch = "*"
+feedsearch-crawler = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3.7"

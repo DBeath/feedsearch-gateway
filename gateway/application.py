@@ -5,7 +5,6 @@ import click
 import flask_s3
 from boto3 import Session
 from feedsearch import search
-from feedsearch.lib import coerce_url
 from flask import Flask, jsonify, render_template, request
 from flask_s3 import FlaskS3
 from flask_assets import Environment, Bundle
@@ -60,12 +59,7 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    feed_list = search(
-        url,
-        info=info,
-        check_all=check_all,
-        favicon_data_uri=favicon
-    )
+    feed_list = search(url)
 
     result, errors = FEED_INFO_SCHEMA.dump(feed_list)
 
@@ -79,7 +73,7 @@ def search_api():
         return render_template('results.html',
                                feeds=feed_list,
                                json=get_pretty_print(result),
-                               url=coerce_url(url))
+                               url=url)
 
     if show_time:
         json_result = {'feeds': result, 'search_time_ms': search_time}

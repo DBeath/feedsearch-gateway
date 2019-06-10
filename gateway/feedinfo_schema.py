@@ -1,4 +1,4 @@
-from feedsearch.feedinfo import FeedInfo
+from feedsearch import FeedInfo
 from marshmallow import Schema, fields, post_load
 
 
