@@ -1,5 +1,6 @@
 import json
 import time
+import logging
 
 import click
 import flask_s3
@@ -9,7 +10,19 @@ from flask import Flask, jsonify, render_template, request
 from flask_s3 import FlaskS3
 from flask_assets import Environment, Bundle
 
-from .feedinfo_schema import FEED_INFO_SCHEMA
+from .feedinfo_schema import FEED_INFO_SCHEMA, FeedInfoSchema
+
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s [in %(pathname)s:%(lineno)d]"
+)
+ch.setFormatter(formatter)
+
+feedsearch_logger = logging.getLogger("feedsearch.crawler")
+feedsearch_logger.setLevel(logging.DEBUG)
+feedsearch_logger.addHandler(ch)
 
 app = Flask(__name__)
 
@@ -59,15 +72,28 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    feed_list = search(url)
+    try:
+        feed_list = search(url, try_urls=check_all)
+    except Exception as e:
+        app.logger.exception("Search error: %s", e)
+        return 'Feedsearch Error', 500
 
-    result, errors = FEED_INFO_SCHEMA.dump(feed_list)
+    kwargs = {}
+    if not info:
+        kwargs["only"] = ["url"]
+
+    if not favicon:
+        kwargs["exclude"] = ["favicon_data_uri"]
+
+    schema = FeedInfoSchema(many=True, **kwargs)
+
+    result, errors = schema.dump(feed_list)
 
     search_time = int((time.perf_counter() - start_time) * 1000)
 
     if errors:
         app.logger.warning('Dump errors: %s', errors)
-        return '', 500
+        return 'Feedsearch Error', 500
 
     if render_result:
         return render_template('results.html',
