@@ -13,11 +13,13 @@
   <ul id="results-list">
     {% for feed in feeds %}
       <li>
-        {% if feed.title %}
-          {{feed.title}}: <a href="{{feed.url}}">{{feed.url}}</a>
-        {% else %}
-          <a href="{{feed.url}}">{{feed.url}}</a>
+        {% if feed.favicon_data_uri %}
+          <img src="{{feed.favicon_data_uri}}" width="16">
         {% endif %}
+        {% if feed.title %}
+          <b>{{feed.title}}</b> :
+        {% endif %}
+          <a href="{{feed.url}}">{{feed.url}}</a>
       </li>
     {% endfor %}
   </ul>

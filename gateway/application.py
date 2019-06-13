@@ -73,7 +73,7 @@ def search_api():
     start_time = time.perf_counter()
 
     try:
-        feed_list = search(url, try_urls=check_all)
+        feed_list = search(url, try_urls=check_all, request_timeout=5, total_timeout=20)
     except Exception as e:
         app.logger.exception("Search error: %s", e)
         return 'Feedsearch Error', 500
