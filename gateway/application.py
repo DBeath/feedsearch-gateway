@@ -5,7 +5,7 @@ import logging
 import click
 import flask_s3
 from boto3 import Session
-from feedsearch import search
+from feedsearch_crawler import search
 from flask import Flask, jsonify, render_template, request
 from flask_s3 import FlaskS3
 from flask_assets import Environment, Bundle
@@ -63,7 +63,7 @@ def search_api():
     show_time = str_to_bool(request.args.get('time', 'false', type=str))
     info = str_to_bool(request.args.get('info', 'true', type=str))
     check_all = str_to_bool(request.args.get('checkall', 'false', type=str))
-    favicon = str_to_bool(request.args.get('favicon', 'false', type=str))
+    favicon = str_to_bool(request.args.get('favicon', 'true', type=str))
 
     if not url:
         response = jsonify({'error': 'No URL in Request'})
@@ -72,8 +72,15 @@ def search_api():
 
     start_time = time.perf_counter()
 
+    print(f"Favicon {favicon}")
     try:
-        feed_list = search(url, try_urls=check_all, request_timeout=5, total_timeout=20)
+        feed_list = search(
+            url,
+            try_urls=check_all,
+            request_timeout=5,
+            total_timeout=20,
+            user_agent="Feedsearch Bot (+https://feedsearch.auctorial.com)",
+            favicon_data_uri=favicon)
     except Exception as e:
         app.logger.exception("Search error: %s", e)
         return 'Feedsearch Error', 500
@@ -81,9 +88,6 @@ def search_api():
     kwargs = {}
     if not info:
         kwargs["only"] = ["url"]
-
-    if not favicon:
-        kwargs["exclude"] = ["favicon_data_uri"]
 
     schema = FeedInfoSchema(many=True, **kwargs)
 
