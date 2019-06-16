@@ -79,7 +79,7 @@ def search_api():
             try_urls=check_all,
             request_timeout=5,
             total_timeout=20,
-            user_agent="Feedsearch Bot (+https://feedsearch.auctorial.com)",
+            user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
             favicon_data_uri=favicon)
     except Exception as e:
         app.logger.exception("Search error: %s", e)
