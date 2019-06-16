@@ -30,21 +30,22 @@
 
 <pre><code>[
   {
-    "bozo": 0, 
-    "content_type": "text/xml; charset=UTF-8", 
-    "description": "Serving the Technologist for more than a decade. IT news, reviews, and analysis.", 
-    "favicon": "https://cdn.arstechnica.net/favicon.ico", 
-    "favicon_data_uri": "", 
+    "bozo": 0,
+    "content_length": 82139,
+    "content_type": "text/xml; charset=UTF-8",
+    "description": "Serving the Technologist for more than a decade. IT news, reviews, and analysis.",
+    "favicon": "https://cdn.arstechnica.net/favicon.ico",
+    "favicon_data_uri": "",
     "hubs": [
       "http://pubsubhubbub.appspot.com/"
     ],
-    "is_push": true, 
-    "score": 4, 
-    "self_url": "http://feeds.arstechnica.com/arstechnica/index", 
-    "site_name": "Ars Technica", 
-    "site_url": "https://arstechnica.com/", 
-    "title": "Ars Technica", 
-    "url": "http://feeds.arstechnica.com/arstechnica/index/", 
+    "is_push": true,
+    "score": 27,
+    "self_url": "http://feeds.arstechnica.com/arstechnica/index",
+    "site_name": "Ars Technica",
+    "site_url": "https://arstechnica.com/",
+    "title": "Ars Technica",
+    "url": "http://feeds.arstechnica.com/arstechnica/index/",
     "version": "rss20"
   }
 ]</code></pre>
@@ -53,14 +54,14 @@
   <ul>
     <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not set.</li>
     <li><b>info</b>: Returns all feed metadata as above. Defaults True. If False, only found URLs are returned, and all other values will be empty or default.</li>
-    <li><b>checkall</b>: Checks all the links at the given URL for feeds, and attempts a few guesses. Defaults False.</li>
     <li><b>favicon</b>: Returns favicon as a <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a>. Defaults False.</li>
+    <li><b>checkall</b>: Attempts to search a range of possible feed paths for at the URL. Defaults False.</li>
   </ul>
 
   <h3 class="subheading">Documentation</h3>
   <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 
-  and is available as a Python package on <a href="https://pypi.org/project/feedsearch/">PyPI</a>.</p>
-  <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch">Feedsearch Github repository</a>.</p>
+  and is available as a Python package on <a href="https://pypi.org/project/feedsearch-crawler/">PyPI</a>.</p>
+  <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch Github repository</a>.</p>
 
 </div>
 {% endblock %}

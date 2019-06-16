@@ -28,8 +28,10 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 
   {% assets "css_all" %}
+    <link rel="preload" href="{{ ASSET_URL }}" as="style">
     <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
   {% endassets %}
+
 </head>
 <body>
   <div class="container">

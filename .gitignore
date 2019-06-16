@@ -103,3 +103,5 @@ ENV/
 .vscode/
 
 **/static/*.min.*.css
+
+.idea/

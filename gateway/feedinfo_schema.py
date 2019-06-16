@@ -12,6 +12,7 @@ class FeedInfoSchema(Schema):
     hubs = fields.List(fields.String(), allow_none=True)
     is_push = fields.Boolean(allow_none=True)
     content_type = fields.String(allow_none=True)
+    content_length = fields.Integer(allow_none=True)
     bozo = fields.Integer(allow_none=True)
     version = fields.String(allow_none=True)
     self_url = fields.String(allow_none=True)

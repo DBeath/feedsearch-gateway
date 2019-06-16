@@ -1,17 +1,16 @@
 import json
-import time
 import logging
+import time
 
 import click
 import flask_s3
 from boto3 import Session
 from feedsearch_crawler import search
 from flask import Flask, jsonify, render_template, request
-from flask_s3 import FlaskS3
 from flask_assets import Environment, Bundle
+from flask_s3 import FlaskS3
 
-from .feedinfo_schema import FEED_INFO_SCHEMA, FeedInfoSchema
-
+from .feedinfo_schema import FeedInfoSchema
 
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
