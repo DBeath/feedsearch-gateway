@@ -19,7 +19,7 @@ formatter = logging.Formatter(
 )
 ch.setFormatter(formatter)
 
-feedsearch_logger = logging.getLogger("feedsearch.crawler")
+feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
 feedsearch_logger.addHandler(ch)
 
@@ -34,7 +34,9 @@ app.config['FLASKS3_HEADERS'] = {
 }
 
 if not app.config['DEBUG']:
-    app.config['FLASK_ASSETS_USE_S3'] = True
+    app.config['FLASK_ASSETS_USE_S3'] = False
+
+app.config['FLASK_ASSETS_USE_S3'] = False
 
 s3 = FlaskS3(app)
 
@@ -48,6 +50,15 @@ css_assets = Bundle(
 
 assets = Environment(app)
 assets.register('css_all', css_assets)
+
+# def get_resource_as_string(name, charset='utf-8'):
+#     with app.open_resource(name) as f:
+#         return f.read().decode(charset)
+
+# app.jinja_env.globals['get_resource_as_string'] = get_resource_as_string
+# app.jinja_env.globals['css_location'] = css_assets.resolve_output()
+# print(app.jinja_env.globals['css_location'])
+
 
 
 @app.route('/', methods=['GET'])

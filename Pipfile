@@ -13,6 +13,7 @@ marshmallow = "*"
 "flask-s3" = "*"
 flask-assets = "*"
 feedsearch-crawler = "*"
+udatetime = "*"
 
 [requires]
 python_version = "3.7"
