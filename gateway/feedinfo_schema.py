@@ -1,4 +1,4 @@
-from feedsearch import FeedInfo
+from feedsearch_crawler import FeedInfo
 from marshmallow import Schema, fields, post_load
 
 
@@ -18,9 +18,11 @@ class FeedInfoSchema(Schema):
     self_url = fields.String(allow_none=True)
     score = fields.Integer(allow_none=True)
     favicon_data_uri = fields.String(allow_none=True)
+    last_updated = fields.DateTime(allow_none=True)
 
     @post_load
     def make_feed_info(self, data):
         return FeedInfo(**data)
+
 
 FEED_INFO_SCHEMA = FeedInfoSchema(many=True)

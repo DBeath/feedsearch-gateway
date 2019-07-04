@@ -54,14 +54,16 @@
   <ul>
     <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not set.</li>
     <li><b>info</b>: Returns all feed metadata as above. Defaults True. If False, only found URLs are returned, and all other values will be empty or default.</li>
-    <li><b>favicon</b>: Returns favicon as a <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a>. Defaults False.</li>
+    <li><b>favicon</b>: Returns favicon as a <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a>. Defaults True.</li>
     <li><b>checkall</b>: Attempts to search a range of possible feed paths for at the URL. Defaults False.</li>
+    <li><b>opml</b>: Return the feeds as an <a href="https://en.wikipedia.org/wiki/OPML">OPML</a> XML string. Defaults False.</li>
   </ul>
+  <pre><code>curl {{ url_for('search_api', url='arstechnica.com', info='true', favicon='true', checkall='false', opml='false', _external=true)}}</code></pre>
 
   <h3 class="subheading">Documentation</h3>
   <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 
   and is available as a Python package on <a href="https://pypi.org/project/feedsearch-crawler/">PyPI</a>.</p>
-  <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch Github repository</a>.</p>
+  <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler GitHub repository</a>.</p>
 
 </div>
 {% endblock %}

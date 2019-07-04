@@ -1,12 +1,14 @@
+import asyncio
 import json
 import logging
 import time
+from collections import OrderedDict
 
 import click
 import flask_s3
 from boto3 import Session
-from feedsearch_crawler import search
-from flask import Flask, jsonify, render_template, request
+from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml
+from flask import Flask, jsonify, render_template, request, Response
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 
@@ -25,31 +27,29 @@ feedsearch_logger.addHandler(ch)
 
 app = Flask(__name__)
 
-app.config['FLASKS3_BUCKET_NAME'] = 'zappa-mrxw2pac1'
-app.config['FLASKS3_GZIP'] = True
-app.config['FLASKS3_GZIP_ONLY_EXTS'] = ['.css', '.js']
-app.config['FLASKS3_FORCE_MIMETYPE'] = True
-app.config['FLASKS3_HEADERS'] = {
-    'Cache-Control': 'max-age=2628000',
-}
+app.config["FLASKS3_BUCKET_NAME"] = "zappa-mrxw2pac1"
+app.config["FLASKS3_GZIP"] = True
+app.config["FLASKS3_GZIP_ONLY_EXTS"] = [".css", ".js"]
+app.config["FLASKS3_FORCE_MIMETYPE"] = True
+app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
 
-if not app.config['DEBUG']:
-    app.config['FLASK_ASSETS_USE_S3'] = False
+if not app.config["DEBUG"]:
+    app.config["FLASK_ASSETS_USE_S3"] = False
 
-app.config['FLASK_ASSETS_USE_S3'] = False
+app.config["FLASK_ASSETS_USE_S3"] = False
 
 s3 = FlaskS3(app)
 
 css_assets = Bundle(
-    'normalize.css',
-    'skeleton.css',
-    'custom.css',
-    filters='cssmin',
-    output='packed.min.%(version)s.css'
+    "normalize.css",
+    "skeleton.css",
+    "custom.css",
+    filters="cssmin",
+    output="packed.min.%(version)s.css",
 )
 
 assets = Environment(app)
-assets.register('css_all', css_assets)
+assets.register("css_all", css_assets)
 
 # def get_resource_as_string(name, charset='utf-8'):
 #     with app.open_resource(name) as f:
@@ -60,40 +60,47 @@ assets.register('css_all', css_assets)
 # print(app.jinja_env.globals['css_location'])
 
 
-
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/search', methods=['GET'])
+@app.route("/search", methods=["GET"])
 def search_api():
-    url = request.args.get('url', '', type=str)
-    render_result = str_to_bool(request.args.get('result', 'false', type=str))
-    show_time = str_to_bool(request.args.get('time', 'false', type=str))
-    info = str_to_bool(request.args.get('info', 'true', type=str))
-    check_all = str_to_bool(request.args.get('checkall', 'false', type=str))
-    favicon = str_to_bool(request.args.get('favicon', 'true', type=str))
+    url = request.args.get("url", "", type=str)
+    render_result = str_to_bool(request.args.get("result", "false", type=str))
+    show_time = str_to_bool(request.args.get("time", "false", type=str))
+    info = str_to_bool(request.args.get("info", "true", type=str))
+    check_all = str_to_bool(request.args.get("checkall", "false", type=str))
+    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
+    opml = str_to_bool(request.args.get("opml", "false", type=str))
 
     if not url:
-        response = jsonify({'error': 'No URL in Request'})
+        response = jsonify({"error": "No URL in Request"})
         response.status_code = 400
         return response
 
     start_time = time.perf_counter()
 
-    print(f"Favicon {favicon}")
-    try:
-        feed_list = search(
-            url,
+    async def run_crawler():
+        crawler = FeedsearchSpider(
             try_urls=check_all,
             request_timeout=5,
             total_timeout=20,
             user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
-            favicon_data_uri=favicon)
+            favicon_data_uri=favicon,
+        )
+
+        await crawler.crawl(url)
+        return crawler
+
+    try:
+        crawler = asyncio.run(run_crawler())
     except Exception as e:
         app.logger.exception("Search error: %s", e)
-        return 'Feedsearch Error', 500
+        return "Feedsearch Error", 500
+
+    feed_list = sort_urls(list(crawler.items))
 
     kwargs = {}
     if not info:
@@ -106,61 +113,71 @@ def search_api():
     search_time = int((time.perf_counter() - start_time) * 1000)
 
     if errors:
-        app.logger.warning('Dump errors: %s', errors)
-        return 'Feedsearch Error', 500
+        app.logger.warning("Dump errors: %s", errors)
+        return "Feedsearch Error", 500
 
-    if render_result:
-        return render_template('results.html',
-                               feeds=feed_list,
-                               json=get_pretty_print(result),
-                               url=url)
+    stats = {str(k): v for k, v in crawler.stats.items()}
+    stats = dict(OrderedDict(sorted(stats.items())).items())
 
     if show_time:
-        json_result = {'feeds': result, 'search_time_ms': search_time}
-        return jsonify(json_result)
+        result = {"feeds": result, "search_time_ms": search_time, "stats": stats}
+
+    if render_result:
+        return render_template(
+            "results.html",
+            feeds=feed_list,
+            json=get_pretty_print(result),
+            url=url,
+            stats=get_pretty_print(stats),
+        )
+    elif opml:
+        opml_result = output_opml(feed_list).decode("utf-8")
+        return Response(opml_result, mimetype="text/xml")
 
     return jsonify(result)
 
 
 def get_pretty_print(json_object):
-    return json.dumps(json_object, sort_keys=True, indent=2, separators=(',', ': '))
+    return json.dumps(json_object, sort_keys=True, indent=2, separators=(",", ": "))
 
 
 def str_to_bool(str):
-    return str.lower() in ('true', 't', 'yes', 'y', '1')
+    return str.lower() in ("true", "t", "yes", "y", "1")
 
 
-@app.cli.command('upload')
-@click.option('--env', prompt=True, help='Environment')
+@app.cli.command("upload")
+@click.option("--env", prompt=True, help="Environment")
 def upload(env):
     """Uploads static assets to S3."""
     if not env:
-        click.echo('Environment must be specified')
+        click.echo("Environment must be specified")
         click.Abort()
 
-    with open('zappa_settings.json', 'r') as f:
+    with open("zappa_settings.json", "r") as f:
         settings = json.load(f)
 
     if not settings:
-        click.echo('Settings not loaded')
+        click.echo("Settings not loaded")
         click.Abort()
 
     try:
-        s3_bucket = settings[env]['s3_bucket']
-        aws_region = settings[env]['aws_region']
+        s3_bucket = settings[env]["s3_bucket"]
+        aws_region = settings[env]["aws_region"]
     except AttributeError:
-        click.echo('Failed to get details from settings')
+        click.echo("Failed to get details from settings")
         click.Abort()
 
     session = Session()
     credentials = session.get_credentials()
     current_credentials = credentials.get_frozen_credentials()
 
-    app.config['FLASKS3_FORCE_MIMETYPE'] = True
+    app.config["FLASKS3_FORCE_MIMETYPE"] = True
 
-    flask_s3.create_all(app,
-                        user=current_credentials.access_key,
-                        password=current_credentials.secret_key,
-                        bucket_name=s3_bucket,
-                        location=aws_region,
-                        put_bucket_acl=False)
+    flask_s3.create_all(
+        app,
+        user=current_credentials.access_key,
+        password=current_credentials.secret_key,
+        bucket_name=s3_bucket,
+        location=aws_region,
+        put_bucket_acl=False,
+    )

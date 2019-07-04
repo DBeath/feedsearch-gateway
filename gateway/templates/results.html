@@ -3,7 +3,7 @@
 {% block results %}
 
 {% if feeds %}
-  <h4 id="results-header">
+  <h4 class="results-header">
     {% if feeds[0].site_name and feeds[0].site_url %}
       Feeds for <a href="{{feeds[0].site_url}}">{{feeds[0].site_name}}</a>
     {% else %}
@@ -24,6 +24,10 @@
     {% endfor %}
   </ul>
 
+  <div class="hidden">
+    <pre><code>{{stats}}</code></pre>
+  </div>
+
   <button 
     type="button"
     id="showhidebutton"
@@ -31,9 +35,12 @@
     value="Show JSON result"
     class="button">Show JSON result &#129131;</button>
   <div id="results-div">
-    <pre id="results" class="hidden hide u-max-full-width"><code>{{json}}</code></pre>
+    <pre id="search-results" class="hidden hide u-max-full-width"><code>{{json}}</code></pre>
   </div>
 {% else %}
+  <h4 class="results-header">
+    Nothing found
+  </h4>
   <p>No feeds found at {{url}}</p>
 {% endif %}
 
@@ -46,7 +53,7 @@ function showhide() {
   const show_text = 'Show JSON result &#129131;';
 
   if (document.getElementById) {
-    let element = document.getElementById('results');
+    let element = document.getElementById('search-results');
     let button = document.getElementById('showhidebutton');
     if (element.classList.contains('hide')) {
       element.classList.remove('hide');

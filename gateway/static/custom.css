@@ -96,7 +96,7 @@ header {
     margin-top: 3em;
 }
 
-#results-header {
+.results-header {
     font-size: 1.6em;
     margin-bottom: 0.5em;
     font-weight: 600;
