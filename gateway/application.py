@@ -13,16 +13,18 @@ from flask_s3 import FlaskS3
 
 from .feedinfo_schema import FeedInfoSchema
 
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s [in %(pathname)s:%(lineno)d]"
-)
-ch.setFormatter(formatter)
-
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
-feedsearch_logger.addHandler(ch)
+
+root_logger = logging.getLogger()
+if not root_logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s [in %(pathname)s:%(lineno)d]"
+    )
+    ch.setFormatter(formatter)
+    feedsearch_logger.addHandler(ch)
 
 app = Flask(__name__)
 
@@ -84,8 +86,9 @@ def search_api():
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=check_all,
-            request_timeout=5,
-            total_timeout=20,
+            concurrency=20,
+            request_timeout=4,
+            total_timeout=10,
             max_retries=0,
             max_depth=5,
             delay=0,
