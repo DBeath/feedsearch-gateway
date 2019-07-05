@@ -87,6 +87,9 @@ def search_api():
             try_urls=check_all,
             request_timeout=5,
             total_timeout=20,
+            max_retries=0,
+            max_depth=5,
+            delay=0,
             user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
             favicon_data_uri=favicon,
         )
