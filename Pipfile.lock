@@ -206,19 +206,19 @@
         },
         "feedsearch-crawler": {
             "hashes": [
-                "sha256:3272b5b52859e5a1358377b510e5c1eb935232d476beb5f24a464bbdb37601c2",
-                "sha256:99ae2ef122475b05a5324ee22d069547a0907a90e7c06467ceeac5b6e5036e63"
+                "sha256:428bc10411c6a0880f9f3577317b3047d03c0c5c6ee1df053ec8441ae94c6a15",
+                "sha256:df4409c243fd2c7562fef4457ab8846fed72feb32be9bcb2cd280ca28ef75f5e"
             ],
             "index": "pypi",
-            "version": "==0.1.4"
+            "version": "==0.1.5"
         },
         "flask": {
             "hashes": [
-                "sha256:ad7c6d841e64296b962296c2c2dabc6543752985727af86a975072dea984b6f3",
-                "sha256:e7d32475d1de5facaa55e3958bc4ec66d3762076b074296aa50ef8fdc5b9df61"
+                "sha256:a31adc27de06034c657a8dc091cc5fcb0227f2474798409bff0e9674de31a026",
+                "sha256:b5ae63812021cb04174fcff05d560a98387a44d9cccd4652a2bfa131ba4e4c9b"
             ],
             "index": "pypi",
-            "version": "==1.0.3"
+            "version": "==1.1.0"
         },
         "flask-assets": {
             "hashes": [

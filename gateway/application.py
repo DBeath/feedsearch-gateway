@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import time
-from collections import OrderedDict
 
 import click
 import flask_s3
@@ -69,7 +68,7 @@ def index():
 def search_api():
     url = request.args.get("url", "", type=str)
     render_result = str_to_bool(request.args.get("result", "false", type=str))
-    show_time = str_to_bool(request.args.get("time", "false", type=str))
+    show_stats = str_to_bool(request.args.get("stats", "false", type=str))
     info = str_to_bool(request.args.get("info", "true", type=str))
     check_all = str_to_bool(request.args.get("checkall", "false", type=str))
     favicon = str_to_bool(request.args.get("favicon", "true", type=str))
@@ -83,7 +82,7 @@ def search_api():
     start_time = time.perf_counter()
 
     async def run_crawler():
-        crawler = FeedsearchSpider(
+        spider = FeedsearchSpider(
             try_urls=check_all,
             request_timeout=5,
             total_timeout=20,
@@ -94,8 +93,8 @@ def search_api():
             favicon_data_uri=favicon,
         )
 
-        await crawler.crawl(url)
-        return crawler
+        await spider.crawl(url)
+        return spider
 
     try:
         crawler = asyncio.run(run_crawler())
@@ -119,10 +118,9 @@ def search_api():
         app.logger.warning("Dump errors: %s", errors)
         return "Feedsearch Error", 500
 
-    stats = {str(k): v for k, v in crawler.stats.items()}
-    stats = dict(OrderedDict(sorted(stats.items())).items())
+    stats = crawler.get_stats()
 
-    if show_time:
+    if show_stats:
         result = {"feeds": result, "search_time_ms": search_time, "stats": stats}
 
     if render_result:
@@ -144,8 +142,8 @@ def get_pretty_print(json_object):
     return json.dumps(json_object, sort_keys=True, indent=2, separators=(",", ": "))
 
 
-def str_to_bool(str):
-    return str.lower() in ("true", "t", "yes", "y", "1")
+def str_to_bool(string):
+    return string.lower() in ("true", "t", "yes", "y", "1")
 
 
 @app.cli.command("upload")
@@ -162,6 +160,7 @@ def upload(env):
     if not settings:
         click.echo("Settings not loaded")
         click.Abort()
+        return
 
     try:
         s3_bucket = settings[env]["s3_bucket"]
@@ -169,6 +168,7 @@ def upload(env):
     except AttributeError:
         click.echo("Failed to get details from settings")
         click.Abort()
+        return
 
     session = Session()
     credentials = session.get_credentials()
