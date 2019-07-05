@@ -5,9 +5,9 @@
 {% if feeds %}
   <h4 class="results-header">
     {% if feeds[0].site_name and feeds[0].site_url %}
-      Feeds for <a href="{{feeds[0].site_url}}">{{feeds[0].site_name}}</a>
+      Feeds for <a href="{{feeds[0].site_url}}" target="_blank">{{feeds[0].site_name}}</a>
     {% else %}
-      Feeds for <a href="{{url}}">{{url}}</a>
+      Feeds for <a href="{{url}}" target="_blank">{{url}}</a>
     {% endif %}
   </h4>
   <ul id="results-list">
@@ -19,7 +19,7 @@
         {% if feed.title %}
           <b>{{feed.title}}</b> :
         {% endif %}
-          <a href="{{feed.url}}">{{feed.url}}</a>
+          <a href="{{feed.url}}" target="_blank">{{feed.url}}</a>
       </li>
     {% endfor %}
   </ul>

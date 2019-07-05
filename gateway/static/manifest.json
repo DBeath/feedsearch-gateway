@@ -1,0 +1,21 @@
+{
+  "short_name": "Feedsearch",
+  "name": "Feedsearch",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "type": "image/png",
+      "sizes": "16x16"
+    },
+    {
+      "src": "/static/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0066ff",
+  "display": "browser",
+  "scope": "/",
+  "theme_color": "#0066ff"
+}
