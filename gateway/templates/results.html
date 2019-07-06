@@ -33,7 +33,7 @@
     id="showhidebutton"
     onclick="showhide()"
     value="Show JSON result"
-    class="button">Show JSON result &#129131;</button>
+    class="button">Show JSON result</button>
   <div id="results-div">
     <pre id="search-results" class="hidden hide u-max-full-width"><code>{{json}}</code></pre>
   </div>
@@ -49,8 +49,8 @@
 {% block scripts %}
 <script>
 function showhide() {
-  const hide_text = 'Hide JSON result &#129129;';
-  const show_text = 'Show JSON result &#129131;';
+  const hide_text = 'Hide JSON result';
+  const show_text = 'Show JSON result';
 
   if (document.getElementById) {
     let element = document.getElementById('search-results');

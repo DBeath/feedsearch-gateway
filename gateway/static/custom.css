@@ -160,3 +160,8 @@ a:visited {
     background-color: rgb(0, 82, 204);
     border-color: rgb(0, 82, 204);
 }
+
+pre#search-results {
+    margin-top: 0;
+    margin-bottom: 1em;
+}

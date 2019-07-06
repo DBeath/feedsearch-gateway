@@ -30,14 +30,17 @@ app = Flask(__name__)
 
 app.config["FLASKS3_BUCKET_NAME"] = "zappa-mrxw2pac1"
 app.config["FLASKS3_GZIP"] = True
+app.config["FLASKS3_ACTIVE"] = True
 app.config["FLASKS3_GZIP_ONLY_EXTS"] = [".css", ".js"]
 app.config["FLASKS3_FORCE_MIMETYPE"] = True
 app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
+app.config["FLASK_ASSETS_USE_S3"] = True
 
-if not app.config["DEBUG"]:
+if app.config["DEBUG"]:
     app.config["FLASK_ASSETS_USE_S3"] = False
+    app.config["ASSETS_DEBUG"] = True
+    app.config["FLASKS3_ACTIVE"] = False
 
-app.config["FLASK_ASSETS_USE_S3"] = False
 
 s3 = FlaskS3(app)
 
