@@ -25,4 +25,7 @@ class FeedInfoSchema(Schema):
         return FeedInfo(**data)
 
 
-FEED_INFO_SCHEMA = FeedInfoSchema(many=True)
+class SiteFeedSchema(Schema):
+    host = fields.String()
+    last_checked = fields.DateTime()
+    feeds = fields.Nested(FeedInfoSchema, many=True)

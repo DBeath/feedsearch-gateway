@@ -2,16 +2,21 @@ import asyncio
 import json
 import logging
 import time
+from datetime import datetime, timedelta, timezone
+from typing import List
 
+import boto3
 import click
 import flask_s3
-from boto3 import Session
-from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml
-from flask import Flask, jsonify, render_template, request, Response
+from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml, FeedInfo
+from feedsearch_crawler.crawler import coerce_url
+from flask import Flask, jsonify, render_template, request, Response, g
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
+from yarl import URL
 
-from .feedinfo_schema import FeedInfoSchema
+from .feedinfo_schema import FeedInfoSchema, SiteFeedSchema
+from .storage import upload_file, download_file
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
@@ -64,31 +69,14 @@ assets.register("css_all", css_assets)
 # print(app.jinja_env.globals['css_location'])
 
 
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html")
+def has_path(url: URL):
+    return bool(url.path.strip("/"))
 
 
-@app.route("/search", methods=["GET"])
-def search_api():
-    url = request.args.get("url", "", type=str)
-    render_result = str_to_bool(request.args.get("result", "false", type=str))
-    show_stats = str_to_bool(request.args.get("stats", "false", type=str))
-    info = str_to_bool(request.args.get("info", "true", type=str))
-    check_all = str_to_bool(request.args.get("checkall", "false", type=str))
-    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
-    opml = str_to_bool(request.args.get("opml", "false", type=str))
-
-    if not url:
-        response = jsonify({"error": "No URL in Request"})
-        response.status_code = 400
-        return response
-
-    start_time = time.perf_counter()
-
+def crawl(url, checkall):
     async def run_crawler():
         spider = FeedsearchSpider(
-            try_urls=check_all,
+            try_urls=checkall,
             concurrency=20,
             request_timeout=4,
             total_timeout=10,
@@ -96,7 +84,6 @@ def search_api():
             max_depth=5,
             delay=0,
             user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
-            favicon_data_uri=favicon,
         )
 
         await spider.crawl(url)
@@ -109,27 +96,172 @@ def search_api():
         return "Feedsearch Error", 500
 
     feed_list = sort_urls(list(crawler.items))
+    stats = crawler.get_stats()
+    return feed_list, stats
+
+
+class BadRequestError(Exception):
+    status_code = 400
+    name = "Bad Request"
+
+    def __init__(self, message=None, render_html=True):
+        Exception.__init__(self)
+        self.message = message or "Feedsearch cannot handle the provided request."
+        self.html = render_html
+
+    def to_dict(self):
+        return {"error": self.name, "message": self.message}
+
+
+@app.errorhandler(BadRequestError)
+def handle_bad_request(error):
+    if error.html:
+        return render_template("error.html", name=error.name, message=error.message)
+    else:
+        response = jsonify(error.to_dict())
+        response.status_code = error.status_code
+        return response
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    app.logger.exception(e)
+    message = "Feedsearch encountered a server error."
+    if g.get("return_html", False):
+        return render_template("error.html", name="Server Error", message=message)
+    else:
+        response = jsonify({"error": "Server Error", "message": message})
+        response.status_code = 500
+        return response
+
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template("index.html")
+
+
+@app.route("/search", methods=["GET"])
+def search_api():
+    url = request.args.get("url", "", type=str)
+    return_html = str_to_bool(request.args.get("result", "false", type=str))
+    show_stats = str_to_bool(request.args.get("stats", "false", type=str))
+    info = str_to_bool(request.args.get("info", "true", type=str))
+    check_all = str_to_bool(request.args.get("checkall", "false", type=str))
+    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
+    return_opml = str_to_bool(request.args.get("opml", "false", type=str))
+    force_crawl = str_to_bool(request.args.get("force", "false", type=str))
+
+    g.return_html = return_html
+
+    if not url:
+        raise BadRequestError("No URL in Request", return_html)
+
+    start_time = time.perf_counter()
+
+    if "." not in url:
+        raise BadRequestError("Invalid URL provided.", return_html)
+
+    try:
+        url = coerce_url(url)
+    except Exception as e:
+        app.logger.error("Error parsing URL %s: %s", url, e)
+        raise BadRequestError("Unable to parse provided URL", return_html)
+
+    searching_path = has_path(url)
+    host = url.origin().host
+    key = f"feeds/{host}.json"
+
+    s3_client = boto3.client("s3")
+    # Always download the existing list of feeds for the url host.
+    existing_file = download_file(s3_client, key, app.config["FLASKS3_BUCKET_NAME"])
+
+    stats: dict = {}
+    site_feeds: dict = {}
+    crawl_feed_list: List[FeedInfo] = []
+    site_feed_list: List[FeedInfo] = []
 
     kwargs = {}
     if not info:
         kwargs["only"] = ["url"]
+    if not favicon:
+        kwargs["exclude"] = ["favicon_data_uri"]
 
-    schema = FeedInfoSchema(many=True, **kwargs)
+    feed_schema = FeedInfoSchema(many=True, **kwargs)
+    site_schema = SiteFeedSchema()
 
-    result, errors = schema.dump(feed_list)
+    try:
+        load_start = time.perf_counter()
+        site_feeds, errors = site_schema.loads(existing_file)
+        load_duration = int((time.perf_counter() - load_start) * 1000)
+        if errors:
+            app.logger.warning("Failed to parse %s for feeds", key)
+        else:
+            site_feed_list = site_feeds.get("feeds")
+            app.logger.debug(
+                "Site Schema load: feeds=%d duration=%d",
+                len(site_feed_list),
+                load_duration,
+            )
+    except Exception as e:
+        app.logger.exception(
+            "Unable to load existing feeds from S3 object %s: %s", key, e
+        )
+
+    if (
+        not site_feed_list
+        or site_feeds.get("last_checked")
+        < (datetime.now(timezone.utc) - timedelta(weeks=1))
+        or force_crawl
+        or searching_path
+    ):
+        crawl_feed_list, stats = crawl(url, check_all)
+
+    feed_dict = {}
+    for feed in site_feed_list:
+        feed_dict[str(feed.url)] = feed
+
+    for feed in crawl_feed_list:
+        feed_dict[str(feed.url)] = feed
+
+    all_feeds = feed_dict.values()
+
+    # Only upload new file if crawl occurred.
+    if crawl_feed_list:
+        site_result = {
+            "host": host,
+            "last_checked": datetime.utcnow(),
+            "feeds": all_feeds,
+        }
+        site_json_file: str = site_schema.dumps(site_result).data
+        upload_file(
+            s3_client,
+            site_json_file.encode("utf-8"),
+            key,
+            app.config["FLASKS3_BUCKET_NAME"],
+        )
+
+    # If the requested URL has a path component, then only return the feeds found from the crawl.
+    if searching_path:
+        feed_list = crawl_feed_list
+    else:
+        feed_list = list(all_feeds)
+
+    dump_start = time.perf_counter()
+    result, errors = feed_schema.dump(feed_list)
+    dump_duration = int((time.perf_counter() - dump_start) * 1000)
+    app.logger.debug("Schema dump: feeds=%d duration=%dms", len(result), dump_duration)
 
     search_time = int((time.perf_counter() - start_time) * 1000)
+    app.logger.info("Ran search of %s in %dms", url, search_time)
 
     if errors:
         app.logger.warning("Dump errors: %s", errors)
         return "Feedsearch Error", 500
 
-    stats = crawler.get_stats()
-
     if show_stats:
-        result = {"feeds": result, "search_time_ms": search_time, "stats": stats}
+        result = {"feeds": result, "search_time_ms": search_time, "crawl_stats": stats}
 
-    if render_result:
+    if return_html:
         return render_template(
             "results.html",
             feeds=feed_list,
@@ -137,7 +269,7 @@ def search_api():
             url=url,
             stats=get_pretty_print(stats),
         )
-    elif opml:
+    elif return_opml:
         opml_result = output_opml(feed_list).decode("utf-8")
         return Response(opml_result, mimetype="text/xml")
 
@@ -176,7 +308,7 @@ def upload(env):
         click.Abort()
         return
 
-    session = Session()
+    session = boto3.Session()
     credentials = session.get_credentials()
     current_credentials = credentials.get_frozen_credentials()
 
