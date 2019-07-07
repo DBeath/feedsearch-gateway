@@ -1,21 +1,21 @@
-import json
+import time
 
-import boto3
 from botocore.exceptions import ClientError
 from flask import current_app as app
-import time
 
 
 def upload_file(client, data, object_key, bucket_name):
-    """Upload a file to an S3 bucket
+    """
+    Upload a file to an S3 bucket
 
+    :param client: S3 Client
     :param bucket_name: Bucket to upload to
-    :param object_key: S3 object name. If not specified then file_name is used
+    :param object_key: S3 object name.
     :return: True if file was uploaded, else False
     """
     start = time.perf_counter()
-    object = f"{bucket_name}/{object_key}"
-    app.logger.info("Uploading %s", object)
+    object_name = f"{bucket_name}/{object_key}"
+    app.logger.info("Uploading %s", object_name)
     try:
         client.put_object(
             Body=data,
@@ -26,7 +26,7 @@ def upload_file(client, data, object_key, bucket_name):
         )
         dur = int((time.perf_counter() - start) * 1000)
         app.logger.debug(
-            "Uploaded: file=%s duration=%dms bytes=%d", object, dur, len(data)
+            "Uploaded: file=%s duration=%dms bytes=%d", object_name, dur, len(data)
         )
     except ClientError as e:
         app.logger.error(e)
@@ -35,16 +35,24 @@ def upload_file(client, data, object_key, bucket_name):
 
 
 def download_file(client, object_key, bucket_name):
+    """
+    Download a file from an S3 bucket
+
+    :param client: S3 Client
+    :param object_key: S3 object name.
+    :param bucket_name: Bucket to download from
+    :return: Object body as bytes
+    """
     start = time.perf_counter()
-    object = f"{bucket_name}/{object_key}"
-    app.logger.info("Downloading %s", object)
+    object_name = f"{bucket_name}/{object_key}"
+    app.logger.info("Downloading %s", object_name)
     try:
         response = client.get_object(Bucket=bucket_name, Key=object_key)
         body = response["Body"].read()
         dur = int((time.perf_counter() - start) * 1000)
         app.logger.debug(
             "Downloaded: file=%s duration=%dms bytes=%d",
-            object,
+            object_name,
             dur,
             response.get("ContentLength"),
         )

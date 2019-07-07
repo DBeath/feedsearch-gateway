@@ -26,9 +26,20 @@
   <h3 class="subheading">API Usage</h3>
   <p>Make a GET request to <a href="{{ url_for('search_api', url='arstechnica.com', _external=true)}}">{{ url_for('search_api', _external=true)}}</a>
   with a "url" value in the querystring containing the URL you'd like to search:</p>
-  <pre><code>curl {{ url_for('search_api', url='arstechnica.com', _external=true)}}</code></pre>
+  <pre><code>curl -X GET "{{ url_for('search_api', url='arstechnica.com', _external=true)}}"</code></pre>
   <p>If the scheme (e.g. "https://") is not provided in the "url" value then the scheme will default to "http://".</p>
-  <p>The API returns a JSON list of found feeds, with attached metadata about the feed.</p>
+  <p>In order to prevent the need to crawl every site every time a request to this API is made, all results for a given site (e.g. "example.com") are saved.</p>
+  <p>A request URL that does not contain a path (e.g. "http://example.com" or "example.com") will always return all saved feeds for that site.</p>
+  <p>If a URL that contains a path (e.g. "https://example.com/test") is requested from the API, the path will always be crawled and the results saved
+    along with other feeds previous found for that site: however, only the results from that particular crawl are returned. This is done for the following reasons:</p>
+  <ul>
+    <li>To reduce the chances of returning feeds that are irrelevant to the requested path on sites that may have many feeds.</li>
+    <li>To increase the chances of discovering feeds that may not be easily discoverable from the site's homepage.</li>
+  </ul>
+  <p>In the case of sites that have only have few feeds or that have well-formed feed paths and feed discovery, the difference between the results returned from a crawl
+    of the path and the list of all feeds at the site should be none or negligible.</p>
+
+  <p>The API returns a list of found feeds in <a href="https://en.wikipedia.org/wiki/JSON">JSON format</a>, with attached metadata about the feed.</p>
 
 <pre><code>[
   {
@@ -61,7 +72,7 @@
     <li><b>checkall</b>: Attempts to search a range of possible feed paths for at the URL. Defaults False.</li>
     <li><b>opml</b>: Return the feeds as an <a href="https://en.wikipedia.org/wiki/OPML">OPML</a> XML string. Defaults False.</li>
   </ul>
-  <pre><code>curl {{ url_for('search_api', url='arstechnica.com', info='true', favicon='true', checkall='false', opml='false', _external=true)}}</code></pre>
+  <pre><code>curl "{{ url_for('search_api', url='arstechnica.com', info='true', favicon='true', checkall='false', opml='false', _external=true)}}"</code></pre>
 
   <h3 class="subheading">Documentation</h3>
   <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 

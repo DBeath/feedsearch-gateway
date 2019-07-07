@@ -8,13 +8,14 @@ from typing import List
 import boto3
 import click
 import flask_s3
-from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml, FeedInfo
+from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml
 from feedsearch_crawler.crawler import coerce_url
 from flask import Flask, jsonify, render_template, request, Response, g
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from yarl import URL
 
+from .feedinfo import CustomFeedInfo
 from .feedinfo_schema import FeedInfoSchema, SiteFeedSchema
 from .storage import upload_file, download_file
 
@@ -177,8 +178,8 @@ def search_api():
 
     stats: dict = {}
     site_feeds: dict = {}
-    crawl_feed_list: List[FeedInfo] = []
-    site_feed_list: List[FeedInfo] = []
+    crawl_feed_list: List[CustomFeedInfo] = []
+    site_feed_list: List[CustomFeedInfo] = []
 
     kwargs = {}
     if not info:
@@ -189,23 +190,24 @@ def search_api():
     feed_schema = FeedInfoSchema(many=True, **kwargs)
     site_schema = SiteFeedSchema()
 
-    try:
-        load_start = time.perf_counter()
-        site_feeds, errors = site_schema.loads(existing_file)
-        load_duration = int((time.perf_counter() - load_start) * 1000)
-        if errors:
-            app.logger.warning("Failed to parse %s for feeds", key)
-        else:
-            site_feed_list = site_feeds.get("feeds")
-            app.logger.debug(
-                "Site Schema load: feeds=%d duration=%d",
-                len(site_feed_list),
-                load_duration,
+    if existing_file:
+        try:
+            load_start = time.perf_counter()
+            site_feeds, errors = site_schema.loads(existing_file)
+            load_duration = int((time.perf_counter() - load_start) * 1000)
+            if errors:
+                app.logger.warning("Failed to parse %s: %s", key, errors)
+            else:
+                site_feed_list = site_feeds.get("feeds")
+                app.logger.debug(
+                    "Site Schema load: feeds=%d duration=%d",
+                    len(site_feed_list),
+                    load_duration,
+                )
+        except Exception as e:
+            app.logger.exception(
+                "Unable to load existing feeds from S3 object %s: %s", key, e
             )
-    except Exception as e:
-        app.logger.exception(
-            "Unable to load existing feeds from S3 object %s: %s", key, e
-        )
 
     if (
         not site_feed_list
@@ -220,7 +222,9 @@ def search_api():
     for feed in site_feed_list:
         feed_dict[str(feed.url)] = feed
 
+    now = datetime.utcnow()
     for feed in crawl_feed_list:
+        feed.last_seen = now
         feed_dict[str(feed.url)] = feed
 
     all_feeds = feed_dict.values()
@@ -232,13 +236,16 @@ def search_api():
             "last_checked": datetime.utcnow(),
             "feeds": all_feeds,
         }
-        site_json_file: str = site_schema.dumps(site_result).data
-        upload_file(
-            s3_client,
-            site_json_file.encode("utf-8"),
-            key,
-            app.config["FLASKS3_BUCKET_NAME"],
-        )
+        site_json_file, errors = site_schema.dumps(site_result)
+        if errors:
+            app.logger.warning("Failed to dump feeds for %s: %s", key, errors)
+        else:
+            upload_file(
+                s3_client,
+                site_json_file.encode("utf-8"),
+                key,
+                app.config["FLASKS3_BUCKET_NAME"],
+            )
 
     # If the requested URL has a path component, then only return the feeds found from the crawl.
     if searching_path:
