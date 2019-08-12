@@ -17,7 +17,7 @@ from yarl import URL
 
 from .feedinfo import CustomFeedInfo
 from .feedinfo_schema import FeedInfoSchema, SiteFeedSchema
-from .storage import upload_file, download_file
+from .storage import upload_file, download_file, list_feed_files
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
@@ -60,6 +60,8 @@ css_assets = Bundle(
 
 assets = Environment(app)
 assets.register("css_all", css_assets)
+
+s3_client = boto3.client("s3")
 
 # def get_resource_as_string(name, charset='utf-8'):
 #     with app.open_resource(name) as f:
@@ -141,8 +143,60 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/sites", methods=["GET"])
+def list_sites():
+    """
+    List all site URLs that have saved feed info.
+    """
+    feed_files = list_feed_files(s3_client, app.config.get("FLASKS3_BUCKET_NAME"))
+    return jsonify(feed_files)
+
+
+@app.route("/sites/<url>", methods=["GET"])
+def site_feeds(url):
+    """
+    Displays the saved feed info for a site url.
+
+    :param url: URL of site
+    """
+    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
+    info = str_to_bool(request.args.get("info", "true", type=str))
+
+    if not url.startswith("feeds/"):
+        key = f"feeds/{url}.json"
+    else:
+        key = f"{url}.json"
+
+    kwargs = {}
+    if not info:
+        kwargs["only"] = ["url"]
+    if not favicon:
+        kwargs["exclude"] = ["favicon_data_uri"]
+
+    existing_file = download_file(s3_client, key, app.config["FLASKS3_BUCKET_NAME"])
+
+    site_schema = SiteFeedSchema()
+
+    if existing_file:
+        # Load site feeds from file as string
+        site_feeds, errors = site_schema.loads(existing_file)
+        # Dump site feeds to dict
+        result, errors = site_schema.dump(site_feeds)
+        if errors:
+            app.logger.warning("Dump errors: %s", errors)
+            return "Feedsearch Error", 500
+        return jsonify(result)
+    else:
+        response = jsonify({"message": f"No site file for url {url}"})
+        response.status_code = 402
+        return response
+
+
 @app.route("/search", methods=["GET"])
 def search_api():
+    """
+    Returns info about feeds at a URL.
+    """
     url = request.args.get("url", "", type=str)
     return_html = str_to_bool(request.args.get("result", "false", type=str))
     show_stats = str_to_bool(request.args.get("stats", "false", type=str))
@@ -172,12 +226,11 @@ def search_api():
     host = url.origin().host
     key = f"feeds/{host}.json"
 
-    s3_client = boto3.client("s3")
     # Always download the existing list of feeds for the url host.
     existing_file = download_file(s3_client, key, app.config["FLASKS3_BUCKET_NAME"])
 
     stats: dict = {}
-    site_feeds: dict = {}
+    site_feeds_data: dict = {}
     crawl_feed_list: List[CustomFeedInfo] = []
     site_feed_list: List[CustomFeedInfo] = []
 
@@ -190,15 +243,16 @@ def search_api():
     feed_schema = FeedInfoSchema(many=True, **kwargs)
     site_schema = SiteFeedSchema()
 
+    # Load the feeds from the existing site file.
     if existing_file:
         try:
             load_start = time.perf_counter()
-            site_feeds, errors = site_schema.loads(existing_file)
+            site_feeds_data, errors = site_schema.loads(existing_file)
             load_duration = int((time.perf_counter() - load_start) * 1000)
             if errors:
                 app.logger.warning("Failed to parse %s: %s", key, errors)
             else:
-                site_feed_list = site_feeds.get("feeds")
+                site_feed_list = site_feeds_data.get("feeds")
                 app.logger.debug(
                     "Site Schema load: feeds=%d duration=%d",
                     len(site_feed_list),
@@ -209,13 +263,15 @@ def search_api():
                 "Unable to load existing feeds from S3 object %s: %s", key, e
             )
 
-    if (
-        not site_feed_list
-        or site_feeds.get("last_checked")
-        < (datetime.now(timezone.utc) - timedelta(weeks=1))
-        or force_crawl
-        or searching_path
-    ):
+    # Calculate if the site was recently crawled.
+    checked_recently = False
+    last_checked = site_feeds_data.get("last_checked")
+    if last_checked:
+        if last_checked > (datetime.now(timezone.utc) - timedelta(weeks=1)):
+            checked_recently = True
+
+    # Always crawl the site if the following conditions are met.
+    if not site_feed_list or not checked_recently or force_crawl or searching_path:
         crawl_feed_list, stats = crawl(url, check_all)
 
     feed_dict = {}

@@ -9,6 +9,7 @@ def upload_file(client, data, object_key, bucket_name):
     Upload a file to an S3 bucket
 
     :param client: S3 Client
+    :param data: S3 file body
     :param bucket_name: Bucket to upload to
     :param object_key: S3 object name.
     :return: True if file was uploaded, else False
@@ -34,7 +35,7 @@ def upload_file(client, data, object_key, bucket_name):
     return True
 
 
-def download_file(client, object_key, bucket_name):
+def download_file(client, object_key, bucket_name) -> str:
     """
     Download a file from an S3 bucket
 
@@ -59,4 +60,15 @@ def download_file(client, object_key, bucket_name):
         return body
     except ClientError as e:
         app.logger.error(e)
-        return None
+        return ""
+
+
+def list_feed_files(client, bucket_name):
+    paginator = client.get_paginator("list_objects_v2")
+    page_iterator = paginator.paginate(Bucket=bucket_name, Prefix="feeds/")
+    feed_list = []
+    for page in page_iterator:
+        contents = page.get("Contents")
+        if contents:
+            feed_list.extend(contents)
+    return feed_list
