@@ -15,6 +15,7 @@ flask-assets = "*"
 feedsearch-crawler = "*"
 udatetime = "*"
 boto3 = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.7"

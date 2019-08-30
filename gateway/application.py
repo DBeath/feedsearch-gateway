@@ -2,21 +2,23 @@ import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Tuple, Dict
 
 import boto3
 import click
 import flask_s3
 from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml
 from feedsearch_crawler.crawler import coerce_url
-from flask import Flask, jsonify, render_template, request, Response, g
+from flask import Flask, jsonify, render_template, request, Response, g, abort
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
+from marshmallow import ValidationError
 from yarl import URL
 
-from .feedinfo import CustomFeedInfo
-from .feedinfo_schema import FeedInfoSchema, SiteFeedSchema
+from gateway.schema import CustomFeedInfo
+from .schema import FeedInfoSchema, SiteFeedSchema
+from .feedly import fetch_feedly
 from .storage import upload_file, download_file, list_feed_files
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
@@ -76,7 +78,7 @@ def has_path(url: URL):
     return bool(url.path.strip("/"))
 
 
-def crawl(url, checkall):
+def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=checkall,
@@ -87,30 +89,39 @@ def crawl(url, checkall):
             max_depth=5,
             delay=0,
             user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
+            start_urls=urls,
         )
 
-        await spider.crawl(url)
+        await spider.crawl()
         return spider
 
     try:
         crawler = asyncio.run(run_crawler())
+        feed_list = sort_urls(list(crawler.items))
+        stats = crawler.get_stats()
+        return feed_list, stats
     except Exception as e:
         app.logger.exception("Search error: %s", e)
-        return "Feedsearch Error", 500
+        abort(500)
 
-    feed_list = sort_urls(list(crawler.items))
-    stats = crawler.get_stats()
-    return feed_list, stats
+
+def fetch_feedly_feeds(query: str):
+    try:
+        feed_urls = asyncio.run(fetch_feedly(query))
+        print(feed_urls)
+        return feed_urls
+    except Exception as e:
+        app.logger.exception("Search error: %s", e)
+        abort(500)
 
 
 class BadRequestError(Exception):
     status_code = 400
     name = "Bad Request"
 
-    def __init__(self, message=None, render_html=True):
+    def __init__(self, message=None):
         Exception.__init__(self)
         self.message = message or "Feedsearch cannot handle the provided request."
-        self.html = render_html
 
     def to_dict(self):
         return {"error": self.name, "message": self.message}
@@ -118,7 +129,7 @@ class BadRequestError(Exception):
 
 @app.errorhandler(BadRequestError)
 def handle_bad_request(error):
-    if error.html:
+    if g.get("return_html", False):
         return render_template("error.html", name=error.name, message=error.message)
     else:
         response = jsonify(error.to_dict())
@@ -153,7 +164,7 @@ def list_sites():
 
 
 @app.route("/sites/<url>", methods=["GET"])
-def site_feeds(url):
+def get_site_feeds(url):
     """
     Displays the saved feed info for a site url.
 
@@ -178,13 +189,15 @@ def site_feeds(url):
     site_schema = SiteFeedSchema()
 
     if existing_file:
-        # Load site feeds from file as string
-        site_feeds, errors = site_schema.loads(existing_file)
-        # Dump site feeds to dict
-        result, errors = site_schema.dump(site_feeds)
-        if errors:
-            app.logger.warning("Dump errors: %s", errors)
-            return "Feedsearch Error", 500
+        try:
+            # Load site feeds from file as string
+            site_feeds, errors = site_schema.loads(existing_file)
+            # Dump site feeds to dict
+            result, errors = site_schema.dump(site_feeds)
+        except ValidationError as err:
+            app.logger.warning("Dump errors: %s", err.messages)
+            return abort(500)
+
         return jsonify(result)
     else:
         response = jsonify({"message": f"No site file for url {url}"})
@@ -197,7 +210,7 @@ def search_api():
     """
     Returns info about feeds at a URL.
     """
-    url = request.args.get("url", "", type=str)
+    query = request.args.get("url", "", type=str)
     return_html = str_to_bool(request.args.get("result", "false", type=str))
     show_stats = str_to_bool(request.args.get("stats", "false", type=str))
     info = str_to_bool(request.args.get("info", "true", type=str))
@@ -205,22 +218,23 @@ def search_api():
     favicon = str_to_bool(request.args.get("favicon", "true", type=str))
     return_opml = str_to_bool(request.args.get("opml", "false", type=str))
     force_crawl = str_to_bool(request.args.get("force", "false", type=str))
+    check_feedly = str_to_bool(request.args.get("feedly", "true", type=str))
 
     g.return_html = return_html
 
-    if not url:
-        raise BadRequestError("No URL in Request", return_html)
+    if not query:
+        raise BadRequestError("No URL in Request")
 
     start_time = time.perf_counter()
 
-    if "." not in url:
-        raise BadRequestError("Invalid URL provided.", return_html)
+    if "." not in query:
+        raise BadRequestError("Invalid URL provided.")
 
     try:
-        url = coerce_url(url)
+        url = coerce_url(query)
     except Exception as e:
-        app.logger.error("Error parsing URL %s: %s", url, e)
-        raise BadRequestError("Unable to parse provided URL", return_html)
+        app.logger.error("Error parsing URL %s: %s", query, e)
+        raise BadRequestError("Unable to parse provided URL")
 
     searching_path = has_path(url)
     host = url.origin().host
@@ -247,36 +261,44 @@ def search_api():
     if existing_file:
         try:
             load_start = time.perf_counter()
-            site_feeds_data, errors = site_schema.loads(existing_file)
+            site_feeds_data = site_schema.loads(existing_file)
             load_duration = int((time.perf_counter() - load_start) * 1000)
-            if errors:
-                app.logger.warning("Failed to parse %s: %s", key, errors)
-            else:
-                site_feed_list = site_feeds_data.get("feeds")
-                app.logger.debug(
-                    "Site Schema load: feeds=%d duration=%d",
-                    len(site_feed_list),
-                    load_duration,
-                )
-        except Exception as e:
-            app.logger.exception(
-                "Unable to load existing feeds from S3 object %s: %s", key, e
+            site_feed_list = site_feeds_data.get("feeds")
+            app.logger.debug(
+                "Site Schema load: feeds=%d duration=%d",
+                len(site_feed_list),
+                load_duration,
+            )
+        except ValidationError as err:
+            app.logger.warning(
+                "Failed to parse existing feeds from S3 object %s: %s",
+                key,
+                err.messages,
             )
 
     # Calculate if the site was recently crawled.
     checked_recently = False
     last_checked = site_feeds_data.get("last_checked")
     if last_checked:
-        if last_checked > (datetime.now(timezone.utc) - timedelta(weeks=1)):
+        if last_checked > (datetime.now() - timedelta(weeks=1)):
             checked_recently = True
+
+    crawl_start_urls: List[URL] = [url]
+
+    # Fetch feeds from feedly.com
+    if check_feedly:
+        feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
+        if feedly_feeds:
+            crawl_start_urls.extend(feedly_feeds)
 
     # Always crawl the site if the following conditions are met.
     if not site_feed_list or not checked_recently or force_crawl or searching_path:
-        crawl_feed_list, stats = crawl(url, check_all)
+        crawl_feed_list, stats = crawl(crawl_start_urls, check_all)
 
     feed_dict = {}
     for feed in site_feed_list:
-        feed_dict[str(feed.url)] = feed
+        if feed.is_valid:
+            feed_dict[str(feed.url)] = feed
 
     now = datetime.utcnow()
     for feed in crawl_feed_list:
@@ -292,16 +314,16 @@ def search_api():
             "last_checked": datetime.utcnow(),
             "feeds": all_feeds,
         }
-        site_json_file, errors = site_schema.dumps(site_result)
-        if errors:
-            app.logger.warning("Failed to dump feeds for %s: %s", key, errors)
-        else:
+        try:
+            site_json_file = site_schema.dumps(site_result)
             upload_file(
                 s3_client,
                 site_json_file.encode("utf-8"),
                 key,
                 app.config["FLASKS3_BUCKET_NAME"],
             )
+        except ValidationError as err:
+            app.logger.warning("Failed to dump feeds for %s: %s", key, err.messages)
 
     # If the requested URL has a path component, then only return the feeds found from the crawl.
     if searching_path:
@@ -309,17 +331,21 @@ def search_api():
     else:
         feed_list = list(all_feeds)
 
-    dump_start = time.perf_counter()
-    result, errors = feed_schema.dump(feed_list)
-    dump_duration = int((time.perf_counter() - dump_start) * 1000)
-    app.logger.debug("Schema dump: feeds=%d duration=%dms", len(result), dump_duration)
-
     search_time = int((time.perf_counter() - start_time) * 1000)
     app.logger.info("Ran search of %s in %dms", url, search_time)
 
-    if errors:
-        app.logger.warning("Dump errors: %s", errors)
-        return "Feedsearch Error", 500
+    result: Dict = {}
+    if feed_list:
+        try:
+            dump_start = time.perf_counter()
+            result = feed_schema.dump(feed_list)
+            dump_duration = int((time.perf_counter() - dump_start) * 1000)
+            app.logger.debug(
+                "Schema dump: feeds=%d duration=%dms", len(result), dump_duration
+            )
+        except ValidationError as err:
+            app.logger.warning("Dump errors: %s", err.messages)
+            abort(500)
 
     if show_stats:
         result = {"feeds": result, "search_time_ms": search_time, "crawl_stats": stats}

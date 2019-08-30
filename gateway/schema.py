@@ -1,6 +1,8 @@
-from marshmallow import Schema, fields, post_load
+from typing import Dict
 
-from .feedinfo import CustomFeedInfo
+from feedsearch_crawler import FeedInfo
+from marshmallow import Schema, fields, post_load, EXCLUDE, ValidationError
+from flask import current_app as app
 
 
 class FeedInfoSchema(Schema):
@@ -22,8 +24,12 @@ class FeedInfoSchema(Schema):
     last_updated = fields.DateTime(allow_none=True)
     last_seen = fields.DateTime(allow_none=True, format="%Y-%m-%dT%H:%M:%S+00:00")
 
+    class Meta:
+        # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
+        unknown = EXCLUDE
+
     @post_load
-    def make_feed_info(self, data):
+    def make_feed_info(self, data, **kwargs):
         return CustomFeedInfo(**data)
 
 
@@ -31,3 +37,15 @@ class SiteFeedSchema(Schema):
     host = fields.String()
     last_checked = fields.DateTime()
     feeds = fields.Nested(FeedInfoSchema, many=True)
+
+    class Meta:
+        # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
+        unknown = EXCLUDE
+
+
+class CustomFeedInfo(FeedInfo):
+    last_seen = None
+
+    @property
+    def is_valid(self) -> bool:
+        return bool(self.url)
