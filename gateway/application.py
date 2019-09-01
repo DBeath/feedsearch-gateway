@@ -44,6 +44,11 @@ app.config["FLASKS3_FORCE_MIMETYPE"] = True
 app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
 app.config["FLASK_ASSETS_USE_S3"] = True
 
+app.config["DAYS_CHECKED_RECENTLY"] = 7
+app.config[
+    "USER_AGENT"
+] = "Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)"
+
 if app.config["DEBUG"]:
     app.config["FLASK_ASSETS_USE_S3"] = False
     app.config["ASSETS_DEBUG"] = True
@@ -88,7 +93,7 @@ def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
             max_retries=0,
             max_depth=5,
             delay=0,
-            user_agent="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)",
+            user_agent=app.config.get("USER_AGENT"),
             start_urls=urls,
         )
 
@@ -105,14 +110,21 @@ def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
         abort(500)
 
 
-def fetch_feedly_feeds(query: str):
+def fetch_feedly_feeds(query: str) -> List[URL]:
     try:
         feed_urls = asyncio.run(fetch_feedly(query))
-        print(feed_urls)
         return feed_urls
     except Exception as e:
         app.logger.exception("Search error: %s", e)
-        abort(500)
+        return []
+
+
+def site_checked_recently(last_checked: datetime, days: int = 7) -> bool:
+    """Calculate if the site was recently crawled."""
+    if last_checked:
+        if last_checked > (datetime.now() - timedelta(days=days)):
+            return True
+    return False
 
 
 class BadRequestError(Exception):
@@ -277,22 +289,20 @@ def search_api():
             )
 
     # Calculate if the site was recently crawled.
-    checked_recently = False
-    last_checked = site_feeds_data.get("last_checked")
-    if last_checked:
-        if last_checked > (datetime.now() - timedelta(weeks=1)):
-            checked_recently = True
-
-    crawl_start_urls: List[URL] = [url]
-
-    # Fetch feeds from feedly.com
-    if check_feedly:
-        feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
-        if feedly_feeds:
-            crawl_start_urls.extend(feedly_feeds)
+    checked_recently = site_checked_recently(
+        site_feeds_data.get("last_checked"), app.config.get("DAYS_CHECKED_RECENTLY")
+    )
 
     # Always crawl the site if the following conditions are met.
     if not site_feed_list or not checked_recently or force_crawl or searching_path:
+        crawl_start_urls: List[URL] = [url]
+        # Fetch feeds from feedly.com
+        if check_feedly:
+            feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
+            if feedly_feeds:
+                crawl_start_urls.extend(feedly_feeds)
+
+        # Crawl the start urls
         crawl_feed_list, stats = crawl(crawl_start_urls, check_all)
 
     feed_dict = {}
