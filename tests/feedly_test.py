@@ -1,12 +1,5 @@
-from gateway.feedly import is_stale_feed, truncate_integer
+from gateway.feedly import is_stale_feed
 from datetime import datetime
-
-
-def test_truncate_integer():
-    assert len(str(truncate_integer(10, 2))) == 2
-    assert len(str(truncate_integer(10000, 3))) == 3
-    assert len(str(truncate_integer(1234567890000, 10))) == 10
-    assert len(str(truncate_integer(10000, 10))) == 5
 
 
 def test_is_stale_feed():

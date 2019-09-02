@@ -13,9 +13,9 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": "/",
+  "start_url": "https://feedsearch.auctorial.com",
   "background_color": "#0066ff",
   "display": "browser",
-  "scope": "/",
+  "scope": "https://feedsearch.auctorial.com",
   "theme_color": "#0066ff"
 }

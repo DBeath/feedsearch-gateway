@@ -1,24 +1,26 @@
-import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import List, Tuple, Dict
+from datetime import datetime
+from typing import List, Dict
 
 import boto3
 import click
 import flask_s3
-from feedsearch_crawler import FeedsearchSpider, sort_urls, output_opml
+from feedsearch_crawler import output_opml
 from feedsearch_crawler.crawler import coerce_url
 from flask import Flask, jsonify, render_template, request, Response, g, abort
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from marshmallow import ValidationError
 from yarl import URL
+from dateutil.tz import tzutc
 
+from gateway.crawl import site_checked_recently, crawl
+from gateway.feedly import fetch_feedly_feeds
 from gateway.schema import CustomFeedInfo
+from gateway.utils import force_utc
 from .schema import FeedInfoSchema, SiteFeedSchema
-from .feedly import fetch_feedly
 from .storage import upload_file, download_file, list_feed_files
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
@@ -81,50 +83,6 @@ s3_client = boto3.client("s3")
 
 def has_path(url: URL):
     return bool(url.path.strip("/"))
-
-
-def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
-    async def run_crawler():
-        spider = FeedsearchSpider(
-            try_urls=checkall,
-            concurrency=20,
-            request_timeout=4,
-            total_timeout=10,
-            max_retries=0,
-            max_depth=5,
-            delay=0,
-            user_agent=app.config.get("USER_AGENT"),
-            start_urls=urls,
-        )
-
-        await spider.crawl()
-        return spider
-
-    try:
-        crawler = asyncio.run(run_crawler())
-        feed_list = sort_urls(list(crawler.items))
-        stats = crawler.get_stats()
-        return feed_list, stats
-    except Exception as e:
-        app.logger.exception("Search error: %s", e)
-        abort(500)
-
-
-def fetch_feedly_feeds(query: str) -> List[URL]:
-    try:
-        feed_urls = asyncio.run(fetch_feedly(query))
-        return feed_urls
-    except Exception as e:
-        app.logger.exception("Search error: %s", e)
-        return []
-
-
-def site_checked_recently(last_checked: datetime, days: int = 7) -> bool:
-    """Calculate if the site was recently crawled."""
-    if last_checked:
-        if last_checked > (datetime.now() - timedelta(days=days)):
-            return True
-    return False
 
 
 class BadRequestError(Exception):
@@ -203,9 +161,9 @@ def get_site_feeds(url):
     if existing_file:
         try:
             # Load site feeds from file as string
-            site_feeds, errors = site_schema.loads(existing_file)
+            site_feeds = site_schema.loads(existing_file)
             # Dump site feeds to dict
-            result, errors = site_schema.dump(site_feeds)
+            result = site_schema.dump(site_feeds)
         except ValidationError as err:
             app.logger.warning("Dump errors: %s", err.messages)
             return abort(500)
@@ -305,25 +263,26 @@ def search_api():
         # Crawl the start urls
         crawl_feed_list, stats = crawl(crawl_start_urls, check_all)
 
+    now = datetime.now(tzutc())
+
     feed_dict = {}
     for feed in site_feed_list:
         if feed.is_valid:
+            if feed.last_updated:
+                feed.last_updated = force_utc(feed.last_updated)
             feed_dict[str(feed.url)] = feed
 
-    now = datetime.utcnow()
     for feed in crawl_feed_list:
         feed.last_seen = now
+        if feed.last_updated:
+            feed.last_updated = force_utc(feed.last_updated)
         feed_dict[str(feed.url)] = feed
 
     all_feeds = feed_dict.values()
 
-    # Only upload new file if crawl occurred.
+    # Only upload new file if crawl occurred and found feeds.
     if crawl_feed_list:
-        site_result = {
-            "host": host,
-            "last_checked": datetime.utcnow(),
-            "feeds": all_feeds,
-        }
+        site_result = {"host": host, "last_checked": now, "feeds": all_feeds}
         try:
             site_json_file = site_schema.dumps(site_result)
             upload_file(

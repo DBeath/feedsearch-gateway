@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 from typing import List
 
@@ -5,20 +6,7 @@ import aiohttp
 from flask import current_app as app
 from yarl import URL
 
-
-def truncate_integer(value: int, length: int = 10) -> int:
-    """
-    Truncate an integer value to the desired length.
-
-    :param value: integer to truncate
-    :param length: desired length of integer
-    :return: truncated integer
-    """
-    val_length = len(str(value))
-    if val_length > length:
-        diff = val_length - length
-        return value // (10 ** diff)
-    return value
+from gateway.utils import truncate_integer
 
 
 def is_stale_feed(last_updated: int, stale_feed_date: datetime) -> bool:
@@ -31,10 +19,12 @@ def is_stale_feed(last_updated: int, stale_feed_date: datetime) -> bool:
     """
     if last_updated:
         try:
-            # Timestamp from feedly is 13 chars long
+            # Timestamp from feedly is 13 chars long, so truncate the integer
             last_updated_datetime = datetime.utcfromtimestamp(
                 truncate_integer(last_updated)
             )
+            # Datetimes are naive, as both are utc and calculated only for this check, plus accuracy is not
+            # too important here.
             if last_updated_datetime > stale_feed_date:
                 return False
         except Exception as e:
@@ -57,7 +47,7 @@ async def fetch_feedly(query: str) -> List[URL]:
 
             result = await resp.json()
 
-            stale_feed_date = datetime.now() - timedelta(weeks=12)
+            stale_feed_date = datetime.utcnow() - timedelta(weeks=12)
 
             for result in result.get("results"):
                 if is_stale_feed(result.get("lastUpdated"), stale_feed_date):
@@ -70,3 +60,12 @@ async def fetch_feedly(query: str) -> List[URL]:
                     pass
 
     return feed_urls
+
+
+def fetch_feedly_feeds(query: str) -> List[URL]:
+    try:
+        feed_urls = asyncio.run(fetch_feedly(query))
+        return feed_urls
+    except Exception as e:
+        app.logger.exception("Search error: %s", e)
+        return []
