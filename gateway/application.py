@@ -251,8 +251,9 @@ def search_api():
         site_feeds_data.get("last_checked"), app.config.get("DAYS_CHECKED_RECENTLY")
     )
 
+    crawled = False
     # Always crawl the site if the following conditions are met.
-    if not site_feed_list or not checked_recently or force_crawl or searching_path:
+    if not site_feeds_data or not checked_recently or force_crawl or searching_path:
         crawl_start_urls: List[URL] = [url]
         # Fetch feeds from feedly.com
         if check_feedly:
@@ -262,6 +263,7 @@ def search_api():
 
         # Crawl the start urls
         crawl_feed_list, stats = crawl(crawl_start_urls, check_all)
+        crawled = True
 
     now = datetime.now(tzutc())
 
@@ -278,10 +280,10 @@ def search_api():
             feed.last_updated = force_utc(feed.last_updated)
         feed_dict[str(feed.url)] = feed
 
-    all_feeds = feed_dict.values()
+    all_feeds = list(feed_dict.values())
 
-    # Only upload new file if crawl occurred and found feeds.
-    if crawl_feed_list:
+    # Only upload new file if crawl occurred.
+    if crawled:
         site_result = {"host": host, "last_checked": now, "feeds": all_feeds}
         try:
             site_json_file = site_schema.dumps(site_result)

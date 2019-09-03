@@ -65,6 +65,7 @@ async def fetch_feedly(query: str) -> List[URL]:
 def fetch_feedly_feeds(query: str) -> List[URL]:
     try:
         feed_urls = asyncio.run(fetch_feedly(query))
+        app.logger.info("Feedly urls: %s", feed_urls)
         return feed_urls
     except Exception as e:
         app.logger.exception("Search error: %s", e)
