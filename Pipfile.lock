@@ -221,11 +221,11 @@
         },
         "feedsearch-crawler": {
             "hashes": [
-                "sha256:797e1c4dd6d934c78485b636cdd15a3c280c1cb3c37f5ee830a90065b1ced4ad",
-                "sha256:a9204fc92ca40c6c014d6b9b7752c8a7aab511fb0e4f9b2b667b414aa396f81f"
+                "sha256:83221d5fcc0b7754bf3768bec1d6e9f6b40b7652572db76feaa75570a2bb3bec",
+                "sha256:f0a449ac22822d146e10ac5aae2dc3d6fac6e2489eca469d041895552561743e"
             ],
             "index": "pypi",
-            "version": "==0.1.8"
+            "version": "==0.1.11"
         },
         "flask": {
             "hashes": [
