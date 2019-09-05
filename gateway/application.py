@@ -254,7 +254,7 @@ def search_api():
     crawled = False
     # Always crawl the site if the following conditions are met.
     if not site_feeds_data or not checked_recently or force_crawl or searching_path:
-        crawl_start_urls: List[URL] = [url]
+        crawl_start_urls: List[URL] = []
         # Fetch feeds from feedly.com
         if check_feedly:
             feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
@@ -262,7 +262,7 @@ def search_api():
                 crawl_start_urls.extend(feedly_feeds)
 
         # Crawl the start urls
-        crawl_feed_list, stats = crawl(crawl_start_urls, check_all)
+        crawl_feed_list, stats = crawl(url, crawl_start_urls, check_all)
         crawled = True
 
     now = datetime.now(tzutc())

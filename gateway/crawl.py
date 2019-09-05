@@ -19,7 +19,7 @@ def site_checked_recently(last_checked: datetime, days: int = 7) -> bool:
     return False
 
 
-def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
+def crawl(url: URL, urls: List[URL], checkall) -> Tuple[list, dict]:
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=checkall,
@@ -33,7 +33,7 @@ def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
             start_urls=urls,
         )
 
-        await spider.crawl()
+        await spider.crawl(url)
         return spider
 
     try:
