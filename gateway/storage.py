@@ -2,6 +2,7 @@ import time
 
 from botocore.exceptions import ClientError
 from flask import current_app as app
+from typing import List, Dict
 
 
 def upload_file(client, data, object_key, bucket_name):
@@ -63,12 +64,26 @@ def download_file(client, object_key, bucket_name) -> str:
         return ""
 
 
-def list_feed_files(client, bucket_name):
+def list_feed_files(client, bucket_name) -> List[Dict]:
+    """
+    List site feed files stored in an S3 bucket.
+
+    :param client: S3 Client
+    :param bucket_name: Name of the S3 bucket
+    :return: List of Dictionary objects containing file information
+    """
     paginator = client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(Bucket=bucket_name, Prefix="feeds/")
-    feed_list = []
+    site_list = []
     for page in page_iterator:
         contents = page.get("Contents")
         if contents:
-            feed_list.extend(contents)
-    return feed_list
+            for item in contents:
+                feed = {
+                    "ETag": item.get("ETag"),
+                    "Key": item.get("Key"),
+                    "Size": item.get("Size"),
+                    "LastModified": item.get("LastModified"),
+                }
+                site_list.append(feed)
+    return site_list
