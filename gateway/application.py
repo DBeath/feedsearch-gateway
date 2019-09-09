@@ -7,6 +7,7 @@ from typing import List, Dict
 import boto3
 import click
 import flask_s3
+from dateutil.tz import tzutc
 from feedsearch_crawler import output_opml
 from feedsearch_crawler.crawler import coerce_url
 from flask import Flask, jsonify, render_template, request, Response, g, abort
@@ -14,7 +15,6 @@ from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from marshmallow import ValidationError
 from yarl import URL
-from dateutil.tz import tzutc
 
 from gateway.crawl import site_checked_recently, crawl
 from gateway.feedly import fetch_feedly_feeds
@@ -207,7 +207,7 @@ def search_api():
         raise BadRequestError("Unable to parse provided URL")
 
     searching_path = has_path(url)
-    host = url.origin().host
+    host = url.host.strip("www.")
     key = f"feeds/{host}.json"
 
     # Always download the existing list of feeds for the url host.
