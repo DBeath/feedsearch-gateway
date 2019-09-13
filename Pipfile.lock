@@ -213,11 +213,11 @@
         },
         "feedsearch-crawler": {
             "hashes": [
-                "sha256:15e486c5c25402eb23e6f162a2a2f146580a6199cdfbdb4a8815ee5908f3d63c",
-                "sha256:9ee713addd7f56710cd7a167e1299966dd645430ee239b329683892022e8b794"
+                "sha256:01081b69542603d201d3af016526874b6a2a6fe9bc116ba9b678c5b8a8b956cf",
+                "sha256:291b11ed9ee6a2072778ba696209f3c7863a4379d63719477e02ef5fbca312a7"
             ],
             "index": "pypi",
-            "version": "==0.1.12"
+            "version": "==0.1.13"
         },
         "flask": {
             "hashes": [
@@ -338,11 +338,11 @@
         },
         "marshmallow": {
             "hashes": [
-                "sha256:5d6412948383b8d628b9d267045e83a5c4c387300ee7d7d57edc93d375be2660",
-                "sha256:76603a8a7517e753ff4ab811b8b987bc14cba206cf0aa7473142120dee6b9a78"
+                "sha256:4b790b6910c0261d22de296ed42569affcbd80097eb770eb6088a79bef69c330",
+                "sha256:fe31ac05fbde972909a752d12b808cbbc15a50ed0a692410e1b227ff10b483ff"
             ],
             "index": "pypi",
-            "version": "==3.0.4"
+            "version": "==3.0.5"
         },
         "more-itertools": {
             "hashes": [
