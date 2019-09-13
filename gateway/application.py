@@ -16,7 +16,7 @@ from flask_s3 import FlaskS3
 from marshmallow import ValidationError
 from yarl import URL
 
-from gateway.crawl import site_checked_recently, crawl
+from gateway.crawl import site_seen_recently, crawl
 from gateway.feedly import fetch_feedly_feeds
 from gateway.schema import CustomFeedInfo
 from gateway.utils import force_utc
@@ -247,13 +247,18 @@ def search_api():
             )
 
     # Calculate if the site was recently crawled.
-    checked_recently = site_checked_recently(
-        site_feeds_data.get("last_checked"), app.config.get("DAYS_CHECKED_RECENTLY")
+    site_crawled_recently = site_seen_recently(
+        site_feeds_data.get("last_seen"), app.config.get("DAYS_CHECKED_RECENTLY")
     )
 
     crawled = False
     # Always crawl the site if the following conditions are met.
-    if not site_feeds_data or not checked_recently or force_crawl or searching_path:
+    if (
+        not site_feeds_data
+        or not site_crawled_recently
+        or force_crawl
+        or searching_path
+    ):
         crawl_start_urls: List[URL] = []
         # Fetch feeds from feedly.com
         if check_feedly:
@@ -284,7 +289,7 @@ def search_api():
 
     # Only upload new file if crawl occurred.
     if crawled:
-        site_result = {"host": host, "last_checked": now, "feeds": all_feeds}
+        site_result = {"host": host, "last_seen": now, "feeds": all_feeds}
         try:
             site_json_file = site_schema.dumps(site_result)
             upload_file(

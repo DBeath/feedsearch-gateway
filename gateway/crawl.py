@@ -11,10 +11,10 @@ from yarl import URL
 from gateway.utils import force_utc
 
 
-def site_checked_recently(last_checked: datetime, days: int = 7) -> bool:
+def site_seen_recently(last_seen: datetime, days: int = 7) -> bool:
     """Calculate if the site was recently crawled."""
-    if last_checked:
-        if force_utc(last_checked) > (datetime.now(tzutc()) - timedelta(days=days)):
+    if last_seen:
+        if force_utc(last_seen) > (datetime.now(tzutc()) - timedelta(days=days)):
             return True
     return False
 

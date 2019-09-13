@@ -6,7 +6,7 @@ def test_sitefeed_schema_loads(sitefeed_schema, sitefeed_json):
     assert sitefeed
     assert isinstance(sitefeed, dict)
     assert sitefeed["host"] == "xkcd.com"
-    assert sitefeed["last_checked"]
+    assert sitefeed["last_seen"]
     assert len(sitefeed["feeds"]) == 2
     feed1 = sitefeed["feeds"][0]
     assert feed1
