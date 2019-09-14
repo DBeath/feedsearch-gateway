@@ -47,20 +47,20 @@ def download_file(client, object_key, bucket_name) -> str:
     """
     start = time.perf_counter()
     object_name = f"{bucket_name}/{object_key}"
-    app.logger.info("Downloading %s", object_name)
+    # app.logger.info("Downloading %s", object_name)
     try:
         response = client.get_object(Bucket=bucket_name, Key=object_key)
         body = response["Body"].read()
         dur = int((time.perf_counter() - start) * 1000)
-        app.logger.debug(
-            "Downloaded: file=%s duration=%dms bytes=%d",
-            object_name,
-            dur,
-            response.get("ContentLength"),
-        )
+        # app.logger.debug(
+        #     "Downloaded: file=%s duration=%dms bytes=%d",
+        #     object_name,
+        #     dur,
+        #     response.get("ContentLength"),
+        # )
         return body
     except ClientError as e:
-        app.logger.error(e)
+        # app.logger.error(e)
         return ""
 
 

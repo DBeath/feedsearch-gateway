@@ -101,7 +101,6 @@ ENV/
 .mypy_cache/
 
 .vscode/
-
 **/static/*.min.*.css
-
 .idea/
+.experiments/

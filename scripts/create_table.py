@@ -1,10 +1,12 @@
 import boto3
+import os
 
 dynamodb = boto3.client("dynamodb")
 
 try:
+    table_name = os.environ["DYNAMODB_TABLE"]
     dynamodb.create_table(
-        TableName="feedsearch",
+        TableName=table_name,
         AttributeDefinitions=[
             {"AttributeName": "PK", "AttributeType": "S"},
             {"AttributeName": "SK", "AttributeType": "S"},
@@ -25,7 +27,7 @@ try:
         ],
         BillingMode="PAY_PER_REQUEST",
     )
-    print("Table created successfully.")
+    print(f"Table {table_name} created successfully.")
 except Exception as e:
     print("Could not create table. Error:")
     print(e)

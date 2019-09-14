@@ -1,6 +1,8 @@
-{"PK": "SITE#test.com", "SK": "#METADATA#test.com", "lastSeen": "2019-01-01T00:00:00"}
-{"PK": "SITE#arstechnica.com", "SK": "#METADATA#arstechnica.com", "lastSeen": "2019-09-01T00:00:00"}
-{"PK": "SITE#test.com", "SK": "FEED#https://test.com/feed1"}
-{"PK": "SITE#test.com", "SK": "FEED#https://test.com/feed2.xml"}
-{"PK": "SITE#arstechnica.com", "SK": "FEED#https://feeds.arstechnica.com/feed1"}
-{"PK": "SITE#arstechnica.com", "SK": "FEED#https://feeds.arstechnica.com/feed2"}
+[
+  {"PK": "SITE#test.com", "SK": "#METADATA#test.com", "lastSeen": "2019-01-01T00:00:00"},
+  {"PK": "SITE#arstechnica.com", "SK": "#METADATA#arstechnica.com", "lastSeen": "2019-09-01T00:00:00"},
+  {"PK": "SITE#test.com", "SK": "FEED#https://test.com/feed1"},
+  {"PK": "SITE#test.com", "SK": "FEED#https://test.com/feed2.xml"},
+  {"PK": "SITE#arstechnica.com", "SK": "FEED#https://feeds.arstechnica.com/feed1"},
+  {"PK": "SITE#arstechnica.com", "SK": "FEED#https://feeds.arstechnica.com/feed2"}
+]

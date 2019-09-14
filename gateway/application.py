@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from typing import List, Dict
@@ -17,14 +18,20 @@ from marshmallow import ValidationError
 from yarl import URL
 
 from gateway.crawl import site_seen_recently, crawl
+from gateway.dynamodb_storage import (
+    db_list_sites,
+    db_load_site_feeds,
+    db_save_site_feeds,
+)
 from gateway.feedly import fetch_feedly_feeds
 from gateway.schema import CustomFeedInfo
 from gateway.utils import force_utc
 from .schema import FeedInfoSchema, SiteFeedSchema
-from .storage import upload_file, download_file, list_feed_files
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
+db_logger = logging.getLogger("dynamodb")
+db_logger.setLevel(logging.DEBUG)
 
 root_logger = logging.getLogger()
 if not root_logger.handlers:
@@ -35,10 +42,11 @@ if not root_logger.handlers:
     )
     ch.setFormatter(formatter)
     feedsearch_logger.addHandler(ch)
+    db_logger.addHandler(ch)
 
 app = Flask(__name__)
 
-app.config["FLASKS3_BUCKET_NAME"] = "zappa-mrxw2pac1"
+app.config["FLASKS3_BUCKET_NAME"] = os.environ["FLASK_S3_BUCKET_NAME"]
 app.config["FLASKS3_GZIP"] = True
 app.config["FLASKS3_ACTIVE"] = True
 app.config["FLASKS3_GZIP_ONLY_EXTS"] = [".css", ".js"]
@@ -47,9 +55,8 @@ app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
 app.config["FLASK_ASSETS_USE_S3"] = True
 
 app.config["DAYS_CHECKED_RECENTLY"] = 7
-app.config[
-    "USER_AGENT"
-] = "Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.auctorial.com)"
+app.config["USER_AGENT"] = os.environ["USER_AGENT"]
+app.config["DYNAMODB_TABLE"] = os.environ["DYNAMODB_TABLE"]
 
 if app.config["DEBUG"]:
     app.config["FLASK_ASSETS_USE_S3"] = False
@@ -70,7 +77,8 @@ css_assets = Bundle(
 assets = Environment(app)
 assets.register("css_all", css_assets)
 
-s3_client = boto3.client("s3")
+dynamodb = boto3.resource("dynamodb")
+db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
 
 # def get_resource_as_string(name, charset='utf-8'):
 #     with app.open_resource(name) as f:
@@ -129,8 +137,8 @@ def list_sites():
     """
     List all site URLs that have saved feed info.
     """
-    feed_files = list_feed_files(s3_client, app.config.get("FLASKS3_BUCKET_NAME"))
-    return jsonify(feed_files)
+    sites = db_list_sites(db_table)
+    return jsonify(sites)
 
 
 @app.route("/sites/<url>", methods=["GET"])
@@ -140,29 +148,13 @@ def get_site_feeds(url):
 
     :param url: URL of site
     """
-    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
-    info = str_to_bool(request.args.get("info", "true", type=str))
+    url = url.strip("www.")
 
-    if not url.startswith("feeds/"):
-        key = f"feeds/{url}.json"
-    else:
-        key = f"{url}.json"
+    site_feeds = db_load_site_feeds(db_table, url)
 
-    kwargs = {}
-    if not info:
-        kwargs["only"] = ["url"]
-    if not favicon:
-        kwargs["exclude"] = ["favicon_data_uri"]
-
-    existing_file = download_file(s3_client, key, app.config["FLASKS3_BUCKET_NAME"])
-
-    site_schema = SiteFeedSchema()
-
-    if existing_file:
+    if site_feeds:
         try:
-            # Load site feeds from file as string
-            site_feeds = site_schema.loads(existing_file)
-            # Dump site feeds to dict
+            site_schema = SiteFeedSchema()
             result = site_schema.dump(site_feeds)
         except ValidationError as err:
             app.logger.warning("Dump errors: %s", err.messages)
@@ -170,7 +162,7 @@ def get_site_feeds(url):
 
         return jsonify(result)
     else:
-        response = jsonify({"message": f"No site file for url {url}"})
+        response = jsonify({"message": f"No feed information saved for url {url}"})
         response.status_code = 402
         return response
 
@@ -208,15 +200,9 @@ def search_api():
 
     searching_path = has_path(url)
     host = url.host.strip("www.")
-    key = f"feeds/{host}.json"
-
-    # Always download the existing list of feeds for the url host.
-    existing_file = download_file(s3_client, key, app.config["FLASKS3_BUCKET_NAME"])
 
     stats: dict = {}
-    site_feeds_data: dict = {}
     crawl_feed_list: List[CustomFeedInfo] = []
-    site_feed_list: List[CustomFeedInfo] = []
 
     kwargs = {}
     if not info:
@@ -225,26 +211,14 @@ def search_api():
         kwargs["exclude"] = ["favicon_data_uri"]
 
     feed_schema = FeedInfoSchema(many=True, **kwargs)
-    site_schema = SiteFeedSchema()
 
-    # Load the feeds from the existing site file.
-    if existing_file:
-        try:
-            load_start = time.perf_counter()
-            site_feeds_data = site_schema.loads(existing_file)
-            load_duration = int((time.perf_counter() - load_start) * 1000)
-            site_feed_list = site_feeds_data.get("feeds")
-            app.logger.debug(
-                "Site Schema load: feeds=%d duration=%d",
-                len(site_feed_list),
-                load_duration,
-            )
-        except ValidationError as err:
-            app.logger.warning(
-                "Failed to parse existing feeds from S3 object %s: %s",
-                key,
-                err.messages,
-            )
+    load_start = time.perf_counter()
+    site_feeds_data = db_load_site_feeds(db_table, host)
+    site_feed_list = site_feeds_data.get("feeds", [])
+    load_duration = int((time.perf_counter() - load_start) * 1000)
+    app.logger.debug(
+        "Site DB Load: feeds=%d duration=%d", len(site_feed_list), load_duration
+    )
 
     # Calculate if the site was recently crawled.
     site_crawled_recently = site_seen_recently(
@@ -264,6 +238,7 @@ def search_api():
         if check_feedly:
             feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
             if feedly_feeds:
+                app.logger.info("Feedly Feeds: %s", feedly_feeds)
                 crawl_start_urls.extend(feedly_feeds)
 
         # Crawl the start urls
@@ -289,17 +264,12 @@ def search_api():
 
     # Only upload new file if crawl occurred.
     if crawled:
-        site_result = {"host": host, "last_seen": now, "feeds": all_feeds}
-        try:
-            site_json_file = site_schema.dumps(site_result)
-            upload_file(
-                s3_client,
-                site_json_file.encode("utf-8"),
-                key,
-                app.config["FLASKS3_BUCKET_NAME"],
-            )
-        except ValidationError as err:
-            app.logger.warning("Failed to dump feeds for %s: %s", key, err.messages)
+        save_start = time.perf_counter()
+        db_save_site_feeds(db_table, host, now, all_feeds)
+        save_duration = int((time.perf_counter() - save_start) * 1000)
+        app.logger.info(
+            "Site DB Save: feeds=%d duration=%d", len(all_feeds), save_duration
+        )
 
     # If the requested URL has a path component, then only return the feeds found from the crawl.
     if searching_path:
@@ -350,7 +320,7 @@ def str_to_bool(string):
 
 
 @app.cli.command("upload")
-@click.option("--env", prompt=True, help="Environment")
+@click.option("--env", prompt=True, help="Zappa Environment Name")
 def upload(env):
     """Uploads static assets to S3."""
     if not env:

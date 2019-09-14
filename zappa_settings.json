@@ -7,7 +7,13 @@
         "runtime": "python3.7",
         "s3_bucket": "zappa-mrxw2pac1",
         "timeout_seconds": 20,
-        "memory_size": 256
+        "memory_size": 256,
+        "lambda_description": "Feedsearch Gateway development",
+        "environment_variables": {
+            "DYNAMODB_TABLE": "feedsearch",
+            "FLASK_S3_BUCKET_NAME": "zappa-mrxw2pac1",
+            "USER_AGENT": "Feedsearch-Gateway"
+        }
     },
     "production": {
         "app_function": "gateway.application.app",
@@ -19,6 +25,7 @@
         "certificate_arn": "arn:aws:acm:us-east-1:142706663030:certificate/6f4099b6-c4c8-42f2-9932-2710ef46954d",
         "domain": "feedsearch.auctorial.com",
         "timeout_seconds": 20,
-        "memory_size": 1024
+        "memory_size": 1024,
+        "lambda_description": "Feedsearch Gateway production"
     }
 }

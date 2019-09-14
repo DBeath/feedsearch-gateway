@@ -1,9 +1,12 @@
 import json
+import os
 
 import boto3
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("feedsearch")
+
+table_name = os.environ["DYNAMODB_TABLE"]
+table = dynamodb.Table(table_name)
 
 items = []
 

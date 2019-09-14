@@ -1,29 +1,86 @@
+import time
+from typing import Dict, List
+
+from botocore.exceptions import ClientError
+from marshmallow import ValidationError
+
 from gateway.schema import DynamoDbFeedInfoSchema, DynamoDbSiteSchema
 from boto3.dynamodb.conditions import Key, Attr
 import boto3
 from datetime import datetime
+import os
+import logging
 
-dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table("feedsearch")
+db_feed_schema = DynamoDbFeedInfoSchema(many=True)
+db_site_schema = DynamoDbSiteSchema()
 
-feed_schema = DynamoDbFeedInfoSchema(many=True)
-site_schema = DynamoDbSiteSchema()
-
-
-def load_feeds(host: str):
-    resp = table.query(KeyConditionExpression=Key("PK").eq(f"SITE#{host}"))
-    site = site_schema.load(resp.get("Items")[0])
-    feeds = feed_schema.load(resp.get("Items")[1:])
-    site["feeds"] = feeds
-    return site
+logger = logging.getLogger("dynamodb")
 
 
-def save_feeds(host: str, last_seen: datetime, feeds) -> None:
-    site = {"host": host, "last_seen": last_seen}
-    dumped_site = site_schema.dump(site)
-    dumped_feeds = feed_schema.dump(feeds)
+def db_load_site_feeds(table, host: str) -> Dict:
+    try:
+        query_start = time.perf_counter()
+        key = f"SITE#{host}"
+        resp = table.query(KeyConditionExpression=Key("PK").eq(key))
+        duration = int((time.perf_counter() - query_start) * 1000)
+        logger.debug("Site Query: key=%s duration=%d", key, duration)
+    except ClientError as e:
+        logger.error(e)
+        return {}
 
-    with table.batch_writer() as batch:
-        batch.put_item(dumped_site)
-        for item in dumped_feeds:
-            batch.put_item(Item=item)
+    if not resp.get("Items"):
+        return {}
+
+    try:
+        load_start = time.perf_counter()
+        site = db_site_schema.load(resp.get("Items")[0])
+        feeds = db_feed_schema.load(resp.get("Items")[1:])
+        site["feeds"] = feeds
+        duration = int((time.perf_counter() - load_start) * 1000)
+        logger.debug("Site Load: key=%s duration=%d", key, duration)
+        return site
+    except ValidationError as e:
+        logger.warning("Dump errors: %s", e.messages)
+    except IndexError as e:
+        logger.error(e)
+
+
+def db_save_site_feeds(table, host: str, last_seen: datetime, feeds) -> None:
+    try:
+        site = {"host": host, "last_seen": last_seen}
+        for feed in feeds:
+            feed.host = host
+        dumped_site = db_site_schema.dump(site)
+        dumped_feeds = db_feed_schema.dump(feeds)
+    except ValidationError as e:
+        logger.warning("Dump errors: %s", e.messages)
+        return
+
+    try:
+        with table.batch_writer() as batch:
+            batch.put_item(dumped_site)
+            for item in dumped_feeds:
+                batch.put_item(Item=item)
+    except ClientError as e:
+        logger.error(e)
+
+
+def db_list_sites(table) -> List[Dict]:
+    try:
+        resp = table.scan(FilterExpression=Key("SK").begins_with("#METADATA#"))
+    except ClientError as e:
+        logger.error(e)
+        return []
+
+    if not resp.items:
+        return []
+
+    sites = []
+    for item in resp.get("Items"):
+        try:
+            site = {"host": item.get("host"), "last_seen": item.get("last_seen")}
+            sites.append(site)
+        except KeyError as e:
+            logger.error("Missing required value: %s", e)
+
+    return sites
