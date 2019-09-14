@@ -8,6 +8,7 @@
         "s3_bucket": "zappa-mrxw2pac1",
         "timeout_seconds": 20,
         "memory_size": 256,
+        "keep_warm": false,
         "lambda_description": "Feedsearch Gateway development",
         "environment_variables": {
             "DYNAMODB_TABLE": "feedsearch",

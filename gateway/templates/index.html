@@ -30,6 +30,8 @@
   <p>If the scheme (e.g. "https://") is not provided in the "url" value then the scheme will default to "http://".</p>
   <p>In order to prevent the need to crawl each site every time a request to this API is made, all results for a given site (e.g. "example.com") are saved.</p>
   <p>A request URL that does not contain a path (e.g. "http://example.com" or "example.com") will always return all saved feeds for that site.</p>
+
+  <h4 class="subheading">URL Paths</h4>
   <p>If a URL that contains a path (e.g. "https://example.com/test") is requested from the API, the path will always be crawled and the results saved
     along with other feeds previously found on that site. However, only the results from that particular crawl are returned. This is done for the following reasons:</p>
   <ul>

@@ -19,10 +19,22 @@ header {
     text-align: center;
     font-weight: 500;
 }
-
+/*
 .subheading {
     font-size: 1.5em;
     margin: .5em 0 .5em 0;
+    *//*font-weight: 500;*//*
+}*/
+
+h3 {
+    font-size: 1.5em;
+    margin: 1em 0 .5em 0;
+    /*font-weight: 500;*/
+}
+
+h4 {
+    font-size: 1.2em;
+    margin: 1em 0 .5em 0;
     /*font-weight: 500;*/
 }
 
