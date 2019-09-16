@@ -10,6 +10,9 @@ from marshmallow import (
     pre_load,
     post_dump,
 )
+from yarl import URL
+
+from gateway.utils import remove_www
 
 
 class NoneString(fields.String):
@@ -19,20 +22,35 @@ class NoneString(fields.String):
         return super(NoneString, self)._serialize(value, attr, obj, **kwargs)
 
 
+class URLField(fields.String):
+    def _serialize(self, value, attr, obj, **kwargs):
+        if value == "":
+            return None
+        return super(URLField, self)._serialize(str(value), attr, obj, **kwargs)
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if not isinstance(value, (str, bytes)):
+            raise self.make_error("invalid")
+        try:
+            return URL(value)
+        except Exception as error:
+            raise self.make_error("invalid") from error
+
+
 class FeedInfoSchema(Schema):
-    url = fields.Url()
-    site_url = NoneString(allow_none=True)
+    url = URLField()
+    site_url = URLField(allow_none=True)
     title = NoneString(allow_none=True)
     description = NoneString(allow_none=True)
     site_name = NoneString(allow_none=True)
-    favicon = NoneString(allow_none=True)
+    favicon = URLField(allow_none=True)
     hubs = fields.List(NoneString(), allow_none=True)
     is_push = fields.Boolean(allow_none=True, default=False)
     content_type = NoneString(allow_none=True)
     content_length = fields.Integer(allow_none=True, strict=False, default=0)
     bozo = fields.Integer(allow_none=True, strict=False, default=0)
     version = NoneString(allow_none=True)
-    self_url = NoneString(allow_none=True)
+    self_url = URLField(allow_none=True)
     score = fields.Integer(allow_none=True, strict=False, default=0)
     favicon_data_uri = NoneString(allow_none=True)
     last_updated = fields.DateTime(allow_none=True)
@@ -112,3 +130,53 @@ class CustomFeedInfo(FeedInfo):
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.url}, {self.host})"
+
+
+def score_item(item: FeedInfo, original_url: URL):
+    score = 0
+
+    url_str = str(item.url).lower()
+
+    # -- Score Decrement --
+
+    if original_url:
+        host = remove_www(original_url.host)
+
+        if host not in item.url.host:
+            score -= 20
+
+    # Decrement the score by every extra path in the url
+    parts_len = len(item.url.parts)
+    if parts_len > 2:
+        score -= (parts_len - 2) * 2
+
+    if item.bozo:
+        score -= 20
+    if not item.description:
+        score -= 10
+    if "georss" in url_str:
+        score -= 10
+    if "alt" in url_str:
+        score -= 7
+    if "comments" in url_str or "comments" in item.title.lower():
+        score -= 15
+    if "feedburner" in url_str:
+        score -= 10
+
+    # -- Score Increment --
+    if item.url.scheme == "https":
+        score += 10
+    if item.is_push:
+        score += 10
+    if "index" in url_str:
+        score += 30
+
+    if any(map(url_str.count, ["/home", "/top", "/most", "/magazine"])):
+        score += 10
+
+    kw = ["atom", "rss", ".xml", "feed", "rdf"]
+    for p, t in zip(range(len(kw) * 2, 0, -2), kw):
+        if t in url_str:
+            score += p
+
+    item.score = score

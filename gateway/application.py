@@ -24,7 +24,7 @@ from gateway.dynamodb_storage import (
     db_save_site_feeds,
 )
 from gateway.feedly import fetch_feedly_feeds
-from gateway.schema import CustomFeedInfo
+from gateway.schema import CustomFeedInfo, score_item
 from gateway.utils import force_utc, remove_www
 from .schema import FeedInfoSchema, SiteFeedSchema
 
@@ -250,20 +250,21 @@ def search_api():
     feed_dict = {}
     for feed in site_feed_list:
         if feed.is_valid:
-            if feed.last_updated:
-                feed.last_updated = force_utc(feed.last_updated)
             feed_dict[str(feed.url)] = feed
 
     for feed in crawl_feed_list:
         feed.last_seen = now
-        if feed.last_updated:
-            feed.last_updated = force_utc(feed.last_updated)
         feed_dict[str(feed.url)] = feed
 
     all_feeds = list(feed_dict.values())
 
+    for feed in all_feeds:
+        if feed.last_updated:
+            feed.last_updated = force_utc(feed.last_updated)
+        feed.score = score_item(feed, url)
+
     # Only upload new file if crawl occurred.
-    if crawled:
+    if crawled and not app.config.get("DEBUG"):
         save_start = time.perf_counter()
         db_save_site_feeds(db_table, host, now, all_feeds)
         save_duration = int((time.perf_counter() - save_start) * 1000)
