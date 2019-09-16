@@ -54,8 +54,10 @@ async def fetch_feedly(query: str) -> List[URL]:
                     continue
 
                 try:
-                    url = result.get("feedId").lstrip("feed/")
-                    feed_urls.append(URL(url))
+                    feedId = result.get("feedId")
+                    if feedId.startswith("feed/"):
+                        feedId = feedId[5:]
+                    feed_urls.append(URL(feedId))
                 except:
                     pass
 

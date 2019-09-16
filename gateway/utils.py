@@ -50,3 +50,15 @@ def truncate_integer(value: int, length: int = 10) -> int:
         diff = val_length - length
         return value // (10 ** diff)
     return value
+
+
+def remove_www(host: str) -> str:
+    """
+    Remove www. subdomain from URL host strings.
+
+    :param host: URL host without scheme or path. e.g. www.test.com
+    :return: URL host string.
+    """
+    if host.startswith("www."):
+        return host[4:]
+    return host

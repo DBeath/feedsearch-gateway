@@ -25,7 +25,7 @@ from gateway.dynamodb_storage import (
 )
 from gateway.feedly import fetch_feedly_feeds
 from gateway.schema import CustomFeedInfo
-from gateway.utils import force_utc
+from gateway.utils import force_utc, remove_www
 from .schema import FeedInfoSchema, SiteFeedSchema
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
@@ -148,7 +148,7 @@ def get_site_feeds(url):
 
     :param url: URL of site
     """
-    url = url.strip("www.")
+    url = remove_www(url)
 
     site_feeds = db_load_site_feeds(db_table, url)
 
@@ -199,7 +199,7 @@ def search_api():
         raise BadRequestError("Unable to parse provided URL")
 
     searching_path = has_path(url)
-    host = url.host.strip("www.")
+    host = remove_www(url.host)
 
     stats: dict = {}
     crawl_feed_list: List[CustomFeedInfo] = []
