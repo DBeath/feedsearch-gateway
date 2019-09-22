@@ -1,15 +1,7 @@
 from datetime import datetime
 
 from feedsearch_crawler import FeedInfo
-from marshmallow import (
-    Schema,
-    fields,
-    post_load,
-    EXCLUDE,
-    ValidationError,
-    pre_load,
-    post_dump,
-)
+from marshmallow import Schema, fields, post_load, EXCLUDE, ValidationError, post_dump
 from yarl import URL
 
 from gateway.utils import remove_www
@@ -50,6 +42,7 @@ class FeedInfoSchema(Schema):
     content_length = fields.Integer(allow_none=True, strict=False, default=0)
     bozo = fields.Integer(allow_none=True, strict=False, default=0)
     version = NoneString(allow_none=True)
+    velocity = fields.Float(allow_none=True)
     self_url = URLField(allow_none=True)
     score = fields.Integer(allow_none=True, strict=False, default=0)
     favicon_data_uri = NoneString(allow_none=True)

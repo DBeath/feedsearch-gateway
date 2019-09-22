@@ -11,7 +11,17 @@ import flask_s3
 from dateutil.tz import tzutc
 from feedsearch_crawler import output_opml
 from feedsearch_crawler.crawler import coerce_url
-from flask import Flask, jsonify, render_template, request, Response, g, abort
+from flask import (
+    Flask,
+    jsonify,
+    render_template,
+    request,
+    Response,
+    g,
+    abort,
+    redirect,
+    url_for,
+)
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from marshmallow import ValidationError
@@ -132,7 +142,7 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/sites", methods=["GET"])
+@app.route("/api/v1/sites", methods=["GET"])
 def list_sites():
     """
     List all site URLs that have saved feed info.
@@ -141,7 +151,7 @@ def list_sites():
     return jsonify(sites)
 
 
-@app.route("/sites/<url>", methods=["GET"])
+@app.route("/api/v1/sites/<url>", methods=["GET"])
 def get_site_feeds(url):
     """
     Displays the saved feed info for a site url.
@@ -168,6 +178,11 @@ def get_site_feeds(url):
 
 
 @app.route("/search", methods=["GET"])
+def orginal_search_api():
+    return redirect(url_for("search_api", **request.args))
+
+
+@app.route("/api/v1/search", methods=["GET"])
 def search_api():
     """
     Returns info about feeds at a URL.
@@ -261,7 +276,7 @@ def search_api():
     for feed in all_feeds:
         if feed.last_updated:
             feed.last_updated = force_utc(feed.last_updated)
-        feed.score = score_item(feed, url)
+        # feed.score = score_item(feed, url)
 
     # Only upload new file if crawl occurred.
     if crawled and not app.config.get("DEBUG"):
@@ -284,6 +299,7 @@ def search_api():
     result: Dict = {}
     if feed_list:
         try:
+            feed_list = sorted(feed_list, key=lambda x: x.score, reverse=True)
             dump_start = time.perf_counter()
             result = feed_schema.dump(feed_list)
             dump_duration = int((time.perf_counter() - dump_start) * 1000)
