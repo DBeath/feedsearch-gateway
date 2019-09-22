@@ -72,6 +72,7 @@ class DynamoDbFeedInfoSchema(FeedInfoSchema):
     PK = fields.Method("feed_primary_key")
     SK = fields.Method("feed_sort_key")
     host = fields.String()
+    velocity = fields.Decimal(allow_none=True)
 
     def feed_primary_key(self, obj):
         if not obj.host:
