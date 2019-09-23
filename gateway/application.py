@@ -8,6 +8,7 @@ from typing import List, Dict
 import boto3
 import click
 import flask_s3
+import sentry_sdk
 from dateutil.tz import tzutc
 from feedsearch_crawler import output_opml
 from feedsearch_crawler.crawler import coerce_url
@@ -25,6 +26,8 @@ from flask import (
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from marshmallow import ValidationError
+from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+from sentry_sdk.integrations.flask import FlaskIntegration
 from yarl import URL
 
 from gateway.crawl import site_seen_recently, crawl
@@ -34,7 +37,7 @@ from gateway.dynamodb_storage import (
     db_save_site_feeds,
 )
 from gateway.feedly import fetch_feedly_feeds
-from gateway.schema import CustomFeedInfo, score_item
+from gateway.schema import CustomFeedInfo
 from gateway.utils import force_utc, remove_www
 from .schema import FeedInfoSchema, SiteFeedSchema
 
@@ -56,7 +59,7 @@ if not root_logger.handlers:
 
 app = Flask(__name__)
 
-app.config["FLASKS3_BUCKET_NAME"] = os.environ["FLASK_S3_BUCKET_NAME"]
+app.config["FLASKS3_BUCKET_NAME"] = os.environ.get("FLASK_S3_BUCKET_NAME", "")
 app.config["FLASKS3_GZIP"] = True
 app.config["FLASKS3_ACTIVE"] = True
 app.config["FLASKS3_GZIP_ONLY_EXTS"] = [".css", ".js"]
@@ -65,8 +68,9 @@ app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
 app.config["FLASK_ASSETS_USE_S3"] = True
 
 app.config["DAYS_CHECKED_RECENTLY"] = 7
-app.config["USER_AGENT"] = os.environ["USER_AGENT"]
-app.config["DYNAMODB_TABLE"] = os.environ["DYNAMODB_TABLE"]
+app.config["USER_AGENT"] = os.environ.get("USER_AGENT", "")
+app.config["DYNAMODB_TABLE"] = os.environ.get("DYNAMODB_TABLE", "")
+app.config["SENTRY_DSN"] = os.environ.get("SENTRY_DSN", "")
 
 if app.config["DEBUG"]:
     app.config["FLASK_ASSETS_USE_S3"] = False
@@ -89,6 +93,11 @@ assets.register("css_all", css_assets)
 
 dynamodb = boto3.resource("dynamodb")
 db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
+
+sentry_sdk.init(
+    app.config.get("SENTRY_DSN"),
+    integrations=[AwsLambdaIntegration(), FlaskIntegration()],
+)
 
 # def get_resource_as_string(name, charset='utf-8'):
 #     with app.open_resource(name) as f:
@@ -125,7 +134,7 @@ def handle_bad_request(error):
         return response
 
 
-@app.errorhandler(Exception)
+@app.errorhandler(500)
 def handle_exception(e):
     app.logger.exception(e)
     message = "Feedsearch encountered a server error."
