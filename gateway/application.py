@@ -94,10 +94,11 @@ assets.register("css_all", css_assets)
 dynamodb = boto3.resource("dynamodb")
 db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
 
-sentry_sdk.init(
-    app.config.get("SENTRY_DSN"),
-    integrations=[AwsLambdaIntegration(), FlaskIntegration()],
-)
+if app.config.get("SENTRY_DSN"):
+    sentry_sdk.init(
+        app.config.get("SENTRY_DSN"),
+        integrations=[AwsLambdaIntegration(), FlaskIntegration()],
+    )
 
 # def get_resource_as_string(name, charset='utf-8'):
 #     with app.open_resource(name) as f:
