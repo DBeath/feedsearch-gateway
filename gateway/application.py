@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime
 from typing import List, Dict
@@ -214,14 +215,16 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    if "." not in query:
-        raise BadRequestError("Invalid URL provided.")
+    if not re.search(r"[a-z0-9]{2,}\.[a-z0-9]{2,}", query):
+        raise BadRequestError(
+            f"Invalid URL: '{query}' is not supported as a searchable URL."
+        )
 
     try:
         url = coerce_url(query)
     except Exception as e:
         app.logger.error("Error parsing URL %s: %s", query, e)
-        raise BadRequestError("Unable to parse provided URL")
+        raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
 
     searching_path = has_path(url)
     host = remove_www(url.host)
