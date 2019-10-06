@@ -1,8 +1,12 @@
+from yarl import URL
+
 from gateway.utils import (
     datetime_to_isoformat,
     datestring_to_utc_datetime,
     force_utc,
     truncate_integer,
+    coerce_url,
+    has_path,
 )
 from datetime import datetime
 from dateutil import tz
@@ -49,3 +53,31 @@ def test_truncate_integer():
     assert len(str(truncate_integer(10000, 3))) == 3
     assert len(str(truncate_integer(1234567890000, 10))) == 10
     assert len(str(truncate_integer(10000, 10))) == 5
+
+
+def test_coerce_url():
+    assert coerce_url("test.com") == URL("http://test.com")
+    assert coerce_url("https://test.com") == URL("https://test.com")
+    assert coerce_url(" https://test.com") == URL("https://test.com")
+    assert coerce_url("test.com/path/path2") == URL("http://test.com/path/path2")
+
+    assert coerce_url("test.com", https=True) == URL("https://test.com")
+    assert coerce_url("https://test.com", https=True) == URL("https://test.com")
+    assert coerce_url(" https://test.com", https=True) == URL("https://test.com")
+    assert coerce_url("http://test.com", https=True) == URL("https://test.com")
+    assert coerce_url("test.com/path/path2", https=True) == URL(
+        "https://test.com/path/path2"
+    )
+
+
+def test_has_path():
+    assert has_path(URL("https://test.com")) is False
+    assert has_path(URL("https://test.com/")) is False
+    assert has_path(URL("https://test.com/path")) is True
+    assert has_path(URL("https://test.com/path/")) is True
+    assert has_path(URL("https://test.com/path/path2")) is True
+    assert has_path(URL("https://test.com/path?query=true")) is True
+    assert has_path(URL("test.com/path")) is True
+    assert has_path(URL("test.com/path/")) is True
+    assert has_path(URL("test.com")) is True
+    assert has_path(URL("test.com/")) is True

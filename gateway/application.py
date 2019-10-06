@@ -3,16 +3,13 @@ import logging
 import os
 import re
 import time
-from datetime import datetime
-from typing import List, Dict
+from typing import Dict
 
 import boto3
 import click
 import flask_s3
 import sentry_sdk
-from dateutil.tz import tzutc
 from feedsearch_crawler import output_opml
-from feedsearch_crawler.crawler import coerce_url
 from flask import (
     Flask,
     jsonify,
@@ -29,17 +26,10 @@ from flask_s3 import FlaskS3
 from marshmallow import ValidationError
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
-from yarl import URL
 
-from gateway.crawl import site_seen_recently, crawl
-from gateway.dynamodb_storage import (
-    db_list_sites,
-    db_load_site_feeds,
-    db_save_site_feeds,
-)
-from gateway.feedly import fetch_feedly_feeds
-from gateway.schema import CustomFeedInfo
-from gateway.utils import force_utc, remove_www
+from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
+from gateway.search import run_search
+from gateway.utils import remove_subdomains, coerce_url
 from .schema import FeedInfoSchema, SiteFeedSchema
 
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
@@ -110,10 +100,6 @@ if app.config.get("SENTRY_DSN"):
 # print(app.jinja_env.globals['css_location'])
 
 
-def has_path(url: URL):
-    return bool(url.path.strip("/"))
-
-
 class BadRequestError(Exception):
     status_code = 400
     name = "Bad Request"
@@ -169,7 +155,7 @@ def get_site_feeds(url):
 
     :param url: URL of site
     """
-    url = remove_www(url)
+    url = remove_subdomains(url)
 
     site_feeds = db_load_site_feeds(db_table, url)
 
@@ -226,85 +212,13 @@ def search_api():
         app.logger.error("Error parsing URL %s: %s", query, e)
         raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
 
-    searching_path = has_path(url)
-    host = remove_www(url.host)
-
-    stats: dict = {}
-    crawl_feed_list: List[CustomFeedInfo] = []
-
-    kwargs = {}
-    if not info:
-        kwargs["only"] = ["url"]
-    if not favicon:
-        kwargs["exclude"] = ["favicon_data_uri"]
-
-    feed_schema = FeedInfoSchema(many=True, **kwargs)
-
-    load_start = time.perf_counter()
-    site_feeds_data = db_load_site_feeds(db_table, host)
-    site_feed_list = site_feeds_data.get("feeds", [])
-    load_duration = int((time.perf_counter() - load_start) * 1000)
-    app.logger.debug(
-        "Site DB Load: feeds=%d duration=%d", len(site_feed_list), load_duration
+    feed_list, stats = run_search(
+        db_table,
+        url,
+        check_feedly=check_feedly,
+        force_crawl=force_crawl,
+        check_all=check_all,
     )
-
-    # Calculate if the site was recently crawled.
-    site_crawled_recently = site_seen_recently(
-        site_feeds_data.get("last_seen"), app.config.get("DAYS_CHECKED_RECENTLY")
-    )
-
-    crawled = False
-    # Always crawl the site if the following conditions are met.
-    if (
-        not site_feeds_data
-        or not site_crawled_recently
-        or force_crawl
-        or searching_path
-    ):
-        crawl_start_urls: List[URL] = []
-        # Fetch feeds from feedly.com
-        if check_feedly:
-            feedly_feeds: List[URL] = fetch_feedly_feeds(str(url))
-            if feedly_feeds:
-                app.logger.info("Feedly Feeds: %s", feedly_feeds)
-                crawl_start_urls.extend(feedly_feeds)
-
-        # Crawl the start urls
-        crawl_feed_list, stats = crawl(url, crawl_start_urls, check_all)
-        crawled = True
-
-    now = datetime.now(tzutc())
-
-    feed_dict = {}
-    for feed in site_feed_list:
-        if feed.is_valid:
-            feed_dict[str(feed.url)] = feed
-
-    for feed in crawl_feed_list:
-        feed.last_seen = now
-        feed_dict[str(feed.url)] = feed
-
-    all_feeds = list(feed_dict.values())
-
-    for feed in all_feeds:
-        if feed.last_updated:
-            feed.last_updated = force_utc(feed.last_updated)
-        # feed.score = score_item(feed, url)
-
-    # Only upload new file if crawl occurred.
-    if crawled and not app.config.get("DEBUG"):
-        save_start = time.perf_counter()
-        db_save_site_feeds(db_table, host, now, all_feeds)
-        save_duration = int((time.perf_counter() - save_start) * 1000)
-        app.logger.info(
-            "Site DB Save: feeds=%d duration=%d", len(all_feeds), save_duration
-        )
-
-    # If the requested URL has a path component, then only return the feeds found from the crawl.
-    if searching_path:
-        feed_list = crawl_feed_list
-    else:
-        feed_list = list(all_feeds)
 
     search_time = int((time.perf_counter() - start_time) * 1000)
     app.logger.info("Ran search of %s in %dms", url, search_time)
@@ -312,6 +226,14 @@ def search_api():
     result: Dict = {}
     if feed_list:
         try:
+            kwargs = {}
+            if not info:
+                kwargs["only"] = ["url"]
+            if not favicon:
+                kwargs["exclude"] = ["favicon_data_uri"]
+
+            feed_schema = FeedInfoSchema(many=True, **kwargs)
+
             feed_list = sorted(feed_list, key=lambda x: x.score, reverse=True)
             dump_start = time.perf_counter()
             result = feed_schema.dump(feed_list)

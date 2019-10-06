@@ -4,7 +4,7 @@ from feedsearch_crawler import FeedInfo
 from marshmallow import Schema, fields, post_load, EXCLUDE, ValidationError, post_dump
 from yarl import URL
 
-from gateway.utils import remove_www
+from gateway.utils import remove_subdomains
 
 
 class NoneString(fields.String):
@@ -125,6 +125,25 @@ class CustomFeedInfo(FeedInfo):
     def __repr__(self):
         return f"{self.__class__.__name__}({self.url}, {self.host})"
 
+    def merge(self, other):
+        """
+        Merge missing data from a matching feed that may not have been fetched on this crawl.
+
+        :param other: An other CustomFeedInfo or FeedInfo
+        :return: None
+        """
+        if not isinstance(other, (self.__class__, FeedInfo)):
+            return
+        if not self.favicon and other.favicon:
+            self.favicon = other.favicon
+        if not self.favicon_data_uri and other.favicon_data_uri:
+            if self.favicon == other.favicon:
+                self.favicon_data_uri = other.favicon_data_uri
+        if not self.site_url and other.site_url:
+            self.site_url = other.site_url
+        if not self.site_name and other.site_name:
+            self.site_name = other.site_name
+
 
 def score_item(item: FeedInfo, original_url: URL):
     score = 0
@@ -134,7 +153,7 @@ def score_item(item: FeedInfo, original_url: URL):
     # -- Score Decrement --
 
     if original_url:
-        host = remove_www(original_url.host)
+        host = remove_subdomains(original_url.host)
 
         if host not in item.url.host:
             score -= 20
