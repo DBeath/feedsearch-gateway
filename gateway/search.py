@@ -144,11 +144,14 @@ def run_search(
             feed_dict[str(feed.url)] = feed
 
     for feed in crawl_feed_list:
+        CustomFeedInfo.upgrade_feedinfo(feed)
         feed.last_seen = now
+        feed.host = host
         existing_feed = feed_dict.get(str(feed.url))
         if existing_feed:
             feed.merge(existing_feed)
-        feed_dict[str(feed.url)] = feed
+        if feed.is_valid:
+            feed_dict[str(feed.url)] = feed
 
     all_feeds = list(feed_dict.values())
 

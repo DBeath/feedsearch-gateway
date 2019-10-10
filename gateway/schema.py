@@ -144,6 +144,15 @@ class CustomFeedInfo(FeedInfo):
         if not self.site_name and other.site_name:
             self.site_name = other.site_name
 
+    @classmethod
+    def upgrade_feedinfo(cls, info: FeedInfo) -> None:
+        """
+        Update FeedInfo object to CustomFeedInfo.
+
+        :param info: FeedInfo object
+        """
+        info.__class__ = cls
+
 
 def score_item(item: FeedInfo, original_url: URL):
     score = 0
