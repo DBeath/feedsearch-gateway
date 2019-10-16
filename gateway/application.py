@@ -26,6 +26,7 @@ from flask_s3 import FlaskS3
 from marshmallow import ValidationError
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
 from gateway.search import run_search
@@ -93,7 +94,11 @@ def initialise_sentry():
     if os.environ.get("SENTRY_DSN", "") and not sentry_initialised:
         sentry_sdk.init(
             os.environ.get("SENTRY_DSN"),
-            integrations=[AwsLambdaIntegration(), FlaskIntegration()],
+            integrations=[
+                AwsLambdaIntegration(),
+                FlaskIntegration(),
+                AioHttpIntegration(),
+            ],
         )
         sentry_initialised = True
 
