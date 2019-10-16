@@ -27,6 +27,7 @@
         "domain": "feedsearch.auctorial.com",
         "timeout_seconds": 20,
         "memory_size": 1024,
-        "lambda_description": "Feedsearch Gateway production"
+        "lambda_description": "Feedsearch Gateway production",
+        "exception_handler": "gateway.application.unhandled_exceptions"
     }
 }

@@ -32,6 +32,8 @@ from gateway.search import run_search
 from gateway.utils import remove_subdomains, coerce_url
 from .schema import FeedInfoSchema, SiteFeedSchema
 
+sentry_initialised = False
+
 feedsearch_logger = logging.getLogger("feedsearch_crawler")
 feedsearch_logger.setLevel(logging.DEBUG)
 db_logger = logging.getLogger("dynamodb")
@@ -85,19 +87,24 @@ assets.register("css_all", css_assets)
 dynamodb = boto3.resource("dynamodb")
 db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
 
-if app.config.get("SENTRY_DSN"):
-    sentry_sdk.init(
-        app.config.get("SENTRY_DSN"),
-        integrations=[AwsLambdaIntegration(), FlaskIntegration()],
-    )
 
-# def get_resource_as_string(name, charset='utf-8'):
-#     with app.open_resource(name) as f:
-#         return f.read().decode(charset)
+def initialise_sentry():
+    global sentry_initialised
+    if os.environ.get("SENTRY_DSN", "") and not sentry_initialised:
+        sentry_sdk.init(
+            os.environ.get("SENTRY_DSN"),
+            integrations=[AwsLambdaIntegration(), FlaskIntegration()],
+        )
+        sentry_initialised = True
 
-# app.jinja_env.globals['get_resource_as_string'] = get_resource_as_string
-# app.jinja_env.globals['css_location'] = css_assets.resolve_output()
-# print(app.jinja_env.globals['css_location'])
+
+initialise_sentry()
+
+
+def unhandled_exceptions(e, event, context):
+    initialise_sentry()
+    sentry_sdk.capture_exception(e)
+    return True  # Prevent invocation retry
 
 
 class BadRequestError(Exception):
