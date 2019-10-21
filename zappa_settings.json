@@ -11,10 +11,12 @@
         "keep_warm": false,
         "lambda_description": "Feedsearch Gateway development",
         "environment_variables": {
-            "DYNAMODB_TABLE": "feedsearch",
+            "DYNAMODB_TABLE": "feedsearch-test",
             "FLASK_S3_BUCKET_NAME": "zappa-mrxw2pac1",
             "USER_AGENT": "Feedsearch-Gateway"
-        }
+        },
+        "binary_support": false,
+        "domain": "feedsearch.dev"
     },
     "production": {
         "app_function": "gateway.application.app",
@@ -24,10 +26,25 @@
         "runtime": "python3.7",
         "s3_bucket": "zappa-mrxw2pac1",
         "certificate_arn": "arn:aws:acm:us-east-1:142706663030:certificate/6f4099b6-c4c8-42f2-9932-2710ef46954d",
-        "domain": "feedsearch.auctorial.com",
+        "domain": "feedsearch.dev",
         "timeout_seconds": 20,
         "memory_size": 1024,
         "lambda_description": "Feedsearch Gateway production",
         "exception_handler": "gateway.application.unhandled_exceptions"
+    },
+    "cloudprod": {
+        "app_function": "gateway.application.app",
+        "aws_region": "us-west-2",
+        "profile_name": "default",
+        "project_name": "feedsearch-gate",
+        "runtime": "python3.7",
+        "s3_bucket": "zappa-mrxw2pac1",
+        "timeout_seconds": 20,
+        "memory_size": 1024,
+        "lambda_description": "Feedsearch Gateway Cloudflare Production",
+        "exception_handler": "gateway.application.unhandled_exceptions",
+        "binary_support": false,
+        "domain": "feedsearch.dev",
+        "apigateway_enabled": false
     }
 }

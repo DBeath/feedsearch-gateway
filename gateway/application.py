@@ -24,9 +24,10 @@ from flask import (
 from flask_assets import Environment, Bundle
 from flask_s3 import FlaskS3
 from marshmallow import ValidationError
+from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
 from gateway.search import run_search
@@ -53,13 +54,24 @@ if not root_logger.handlers:
 
 app = Flask(__name__)
 
+app.wsgi_app = ProxyFix(app.wsgi_app)
+
+app.config["SERVER_NAME"] = os.environ.get("SERVER_NAME")
 app.config["FLASKS3_BUCKET_NAME"] = os.environ.get("FLASK_S3_BUCKET_NAME", "")
 app.config["FLASKS3_GZIP"] = True
-app.config["FLASKS3_ACTIVE"] = True
+
 app.config["FLASKS3_GZIP_ONLY_EXTS"] = [".css", ".js"]
 app.config["FLASKS3_FORCE_MIMETYPE"] = True
 app.config["FLASKS3_HEADERS"] = {"Cache-Control": "max-age=2628000"}
-app.config["FLASK_ASSETS_USE_S3"] = True
+
+app.config["FLASKS3_CDN_DOMAIN"] = os.environ.get("CDN_DOMAIN")
+
+app.config["FLASKS3_ACTIVE"] = False
+app.config["FLASK_ASSETS_USE_S3"] = False
+
+if os.environ.get("FLASKS3_ACTIVE") == True:
+    app.config["FLASKS3_ACTIVE"] = True
+    app.config["FLASK_ASSETS_USE_S3"] = True
 
 app.config["DAYS_CHECKED_RECENTLY"] = 7
 app.config["USER_AGENT"] = os.environ.get("USER_AGENT", "")
@@ -233,6 +245,7 @@ def search_api():
     )
 
     search_time = int((time.perf_counter() - start_time) * 1000)
+    stats["search_time"] = search_time
     app.logger.info("Ran search of %s in %dms", url, search_time)
 
     result: Dict = {}
@@ -253,6 +266,7 @@ def search_api():
             app.logger.debug(
                 "Schema dump: feeds=%d duration=%dms", len(result), dump_duration
             )
+            stats["dump_time"] = dump_duration
         except ValidationError as err:
             app.logger.warning("Dump errors: %s", err.messages)
             abort(500)
