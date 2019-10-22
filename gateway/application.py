@@ -213,7 +213,7 @@ def search_api():
     show_stats = str_to_bool(request.args.get("stats", "false", type=str))
     info = str_to_bool(request.args.get("info", "true", type=str))
     check_all = str_to_bool(request.args.get("checkall", "false", type=str))
-    favicon = str_to_bool(request.args.get("favicon", "true", type=str))
+    favicon = str_to_bool(request.args.get("favicon", "false", type=str))
     return_opml = str_to_bool(request.args.get("opml", "false", type=str))
     force_crawl = str_to_bool(request.args.get("force", "false", type=str))
     check_feedly = str_to_bool(request.args.get("feedly", "true", type=str))
