@@ -1,17 +1,19 @@
 
 <h3 class="subheading">Search for Feeds</h3>
-<form id="searchform" action="/search" method="GET">
+<form id="searchform" action="{{ url_for('search_api', _external=true) }}" method="GET">
   <input type="hidden" name="result" value="true">
   <input
     id="search-input" 
     name="url"
     placeholder="Site or Feed URL, e.g. arstechnica.com"
     autocomplete="off"
-    autocorrect="off"
     autocapitalize="off"
     spellcheck="false"
     type="text"
     class="u-full-width"
+    inputmode="url"
+    maxlength="2048"
+    minlength="4"
     required
     aria-label="Search for Feeds">
   <button id="search-button" class="button button-primary" type="submit">Search</button>

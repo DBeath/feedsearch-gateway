@@ -24,15 +24,15 @@
 <div id="documentation_div">
 
   <h3 class="subheading">API Usage</h3>
-  <p>Make a GET request to <a href="{{ url_for('search_api', url='arstechnica.com', _external=true)}}">{{ url_for('search_api', _external=true)}}</a>
+  <p>Make a GET request to <a href="{{ url_for('search_api', url='arstechnica.com', _external=true) }}">{{ url_for('search_api', _external=true) }}</a>
   with a "url" value in the querystring containing the URL you'd like to search:</p>
-  <pre><code>curl -X GET "{{ url_for('search_api', url='arstechnica.com', _external=true)}}"</code></pre>
+  <pre><code>curl -X GET "{{ url_for('search_api', url='arstechnica.com', _external=true) }}"</code></pre>
   <p>If the scheme (e.g. "https://") is not provided in the "url" value then the scheme will default to "http://".</p>
   <p>In order to prevent the need to crawl each site every time a request to this API is made, all results for a given site (e.g. "example.com") are saved.</p>
   <p>A request URL that does not contain a path (e.g. "http://example.com" or "example.com") will always return all saved feeds for that site.</p>
 
   <h4 class="subheading">URL Paths</h4>
-  <p>If a URL that contains a path (e.g. "https://example.com/test") is requested from the API, the path will always be crawled and the results saved
+  <p>If a URL that contains a path (e.g. "https://example.com/test", or "example.com/rss.xml" ) is requested from the API, the path will always be crawled and the results saved
     along with other feeds previously found on that site. However, only the results from that particular crawl are returned. This is done for the following reasons:</p>
   <ul>
     <li>To reduce the chances of returning feeds that are irrelevant to the requested path on sites that may have many feeds.</li>
@@ -42,7 +42,7 @@
     of the path and the list of all feeds at the site should be none or negligible.</p>
 
   <h3 class="subheading">Query Parameters</h3>
-  <p>The API accepts the following query parameters:</p>
+  <p>The Feedsearch API accepts the following query parameters:</p>
   <ul>
     <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not set.</li>
     <li><b>info</b>: Returns all feed metadata as below. Defaults True. If False, only found URLs are returned, and all other values will be empty or default.</li>
@@ -50,10 +50,10 @@
     <li><b>checkall</b>: Attempts to search a range of possible feed paths for at the URL. Defaults False.</li>
     <li><b>opml</b>: Return the feeds as an <a href="https://en.wikipedia.org/wiki/OPML">OPML</a> XML string. Defaults False.</li>
   </ul>
-  <pre><code>curl "{{ url_for('search_api', url='arstechnica.com', info='true', favicon='false', checkall='false', opml='false', _external=true)}}"</code></pre>
+  <pre><code>curl "{{ url_for('search_api', url='arstechnica.com', info='true', favicon='false', checkall='false', opml='false', _external=true) }}"</code></pre>
 
   <h3 class="subheading">API Response</h3>
-  <p>The API returns a list of found feeds in <a href="https://en.wikipedia.org/wiki/JSON">JSON format</a>, with attached metadata about the feed.</p>
+  <p>The Feedsearch API returns a list of found feeds in <a href="https://en.wikipedia.org/wiki/JSON">JSON format</a>, with attached metadata about the feed.</p>
 
   <ul>
     <li><b>bozo</b>: Set to 1 when feed data is not well formed or may not be a feed. Defaults 0.</li>
@@ -68,7 +68,7 @@
     <li><b>last_seen</b>: Date that the feed was last seen by the crawler.</li>
     <li><b>last_updated</b>: Date of the latest entry in the feed, at the time the feed was last crawled.</li>
     <li><b>score</b>: Computed relevance of feed url value to requested search URL. May be safely ignored.</li>
-    <li><b>self_url</b>: The <i>ref="self"</i> value returned from feed links. In some cases may be different from feed url.</li>
+    <li><b>self_url</b>: The <i>ref="self"</i> value returned from feed links. May be different from feed url.</li>
     <li><b>site_name</b>: Name of the feed's website.</li>
     <li><b>site_url</b>: URL of the feed's website.</li>
     <li><b>title</b>: Feed Title.</li>
@@ -106,7 +106,7 @@
   <h3 class="subheading">Documentation</h3>
   <p>Feedsearch is written as an <a href="https://www.python.org/">Python</a> library, 
   and is available as a Python package on <a href="https://pypi.org/project/feedsearch-crawler/">PyPI</a>.</p>
-  <p>Further documentation and source code can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler GitHub repository</a>.</p>
+  <p>Further documentation and source code for the crawler can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler GitHub repository</a>.</p>
 
 </div>
 {% endblock %}
