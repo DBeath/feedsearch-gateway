@@ -7,7 +7,9 @@
     }
   </style>
 
-<!--  <link rel="dns-prefetch" href="https://zappa-mrxw2pac1.s3.amazonaws.com">-->
+  {% if app.config.get("FLASKS3_CDN_DOMAIN") %}
+    <link rel="dns-prefetch" href="{{ app.config.get('FLASKS3_CDN_DOMAIN') }}">
+  {% endif %}
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,7 +23,6 @@
   <meta property="og:description" content="An API service for finding RSS, Atom, and JSON feeds on websites.">
   <meta property="og:image" content="{{ url_for('static', filename='apple-touch-icon.png') }}">
   
-
   <link rel="canonical" href="{{ url_for('index', _external=true, _scheme='https') }}">
 
   <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
@@ -30,7 +31,6 @@
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
   {% assets "css_all" %}
-<!--    <link rel="preload" href="{{ ASSET_URL }}" as="style">-->
     <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
   {% endassets %}
 

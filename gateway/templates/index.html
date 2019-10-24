@@ -63,6 +63,7 @@
     <li><b>favicon</b>: URL of feed or site <a href="https://en.wikipedia.org/wiki/Favicon">Favicon</a></li>
     <li><b>favicon_data_uri</b>: <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a> of the Favicon.</li>
     <li><b>hubs</b>: List of <a href="https://en.wikipedia.org/wiki/WebSub">Websub</a> hubs for the feed if available.</li>
+    <li><b>is_podcast</b>: True if the feed contains valid podcast elements and enclosures.</li>
     <li><b>is_push</b>: True if the feed contains valid Websub data.</li>
     <li><b>last_seen</b>: Date that the feed was last seen by the crawler.</li>
     <li><b>last_updated</b>: Date of the latest entry in the feed, at the time the feed was last crawled.</li>
@@ -87,6 +88,7 @@
     "hubs": [
       "http://pubsubhubbub.appspot.com/"
     ],
+    "is_podcast": false,
     "is_push": true,
     "last_seen": "2019-07-05T19:00:00+00:00",
     "last_updated": "2019-07-05T16:00:30+00:00",

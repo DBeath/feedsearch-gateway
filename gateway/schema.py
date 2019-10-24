@@ -37,6 +37,7 @@ class FeedInfoSchema(Schema):
     site_name = NoneString(allow_none=True)
     favicon = URLField(allow_none=True)
     hubs = fields.List(NoneString(), allow_none=True)
+    is_podcast = fields.Boolean(allow_none=True, default=False)
     is_push = fields.Boolean(allow_none=True, default=False)
     content_type = NoneString(allow_none=True)
     content_length = fields.Integer(allow_none=True, strict=False, default=0)
