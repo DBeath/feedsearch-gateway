@@ -132,6 +132,11 @@ def run_search(
                 app.logger.info("Feedly Feeds: %s", feedly_feeds)
                 crawl_start_urls.extend(feedly_feeds)
 
+        try:
+            crawl_start_urls.extend([x.url for x in site_feed_list])
+        except (KeyError, ValueError):
+            pass
+
         # Crawl the start urls
         crawl_feed_list, crawl_stats = crawl(query_url, crawl_start_urls, check_all)
         crawled = True

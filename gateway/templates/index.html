@@ -40,6 +40,8 @@
   </ul>
   <p>In the case of sites that have only have few feeds or that have well-formed feed paths and feed discovery, the difference between the results returned from a crawl
     of the path and the list of all feeds at the site should be none or negligible.</p>
+  <p>An individual feed can be crawled by passing in the full URL to that feed. If you know the specific location of a feed, but that feed doesn't appear
+    in the results for the site, then please query the feed's specific URL. The API will then be able to show the feed upon subsequent requests.</p>
 
   <h3 class="subheading">Query Parameters</h3>
   <p>The Feedsearch API accepts the following query parameters:</p>
@@ -63,12 +65,12 @@
     <li><b>favicon</b>: URL of feed or site <a href="https://en.wikipedia.org/wiki/Favicon">Favicon</a></li>
     <li><b>favicon_data_uri</b>: <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a> of the Favicon.</li>
     <li><b>hubs</b>: List of <a href="https://en.wikipedia.org/wiki/WebSub">Websub</a> hubs for the feed if available.</li>
-    <li><b>is_podcast</b>: True if the feed contains valid podcast elements and enclosures.</li>
+    <li><b>is_podcast</b>: True if the feed contains valid <a href="https://en.wikipedia.org/wiki/Podcast">podcast</a> elements and enclosures.</li>
     <li><b>is_push</b>: True if the feed contains valid Websub data.</li>
     <li><b>last_seen</b>: Date that the feed was last seen by the crawler.</li>
     <li><b>last_updated</b>: Date of the latest entry in the feed, at the time the feed was last crawled.</li>
     <li><b>score</b>: Computed relevance of feed url value to requested search URL. May be safely ignored.</li>
-    <li><b>self_url</b>: The <i>ref="self"</i> value returned from feed links. May be different from feed url.</li>
+    <li><b>self_url</b>: The <i>rel="self"</i> value returned from feed links. May be different from feed url.</li>
     <li><b>site_name</b>: Name of the feed's website.</li>
     <li><b>site_url</b>: URL of the feed's website.</li>
     <li><b>title</b>: Feed Title.</li>
