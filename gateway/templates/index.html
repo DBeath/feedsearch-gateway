@@ -106,17 +106,5 @@
   <p>Further documentation and source code for the crawler can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler GitHub repository</a>.</p>
   <p>Feedsearch was originally written to power the feed search function at <a href="https://auctorial.com">Auctorial</a>.</p>
 
-  <h4 class="subheading">Crawl Logic</h4>
-  <p>Feedsearch API finds feeds by <a href="https://en.wikipedia.org/wiki/Web_crawler">crawling</a> sites starting at the requested URL. The crawl logic is as
-    restrictive as possible to minimize load on the site and make crawls fast, by only crawling URLs that appear likely to contain feeds.</p>
-  <p>As previously stated, a query for a URL that contains a path (e.g. "https://example.com/test", or "example.com/rss.xml" ) will always be crawled and the results saved
-    along with other feeds previously found at that site's domain. However, only the results from that particular crawl are returned. This is done for the following reasons:</p>
-  <ul>
-    <li>To reduce the chances of returning feeds that are irrelevant to the requested path on sites that may have many feeds.</li>
-    <li>To increase the chances of discovering feeds that may not be easily discoverable from the site's homepage.</li>
-  </ul>
-  <p>In the case of sites that have only have few feeds or that have well-formed feed paths and feed discovery, the difference between the results returned from a crawl
-    of the path and the list of all feeds at the site should be none or negligible.</p>
-
 </div>
 {% endblock %}
