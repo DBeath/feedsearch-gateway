@@ -1,7 +1,7 @@
 import asyncio
 import time
 from datetime import datetime, timedelta
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Dict, Union, Set
 
 from dateutil.tz import tzutc
 from feedsearch_crawler import FeedsearchSpider, sort_urls
@@ -15,7 +15,7 @@ from gateway.schema import CustomFeedInfo
 from gateway.utils import force_utc, remove_subdomains, remove_scheme, has_path
 
 
-def site_seen_recently(last_seen: datetime, days: int = 7) -> bool:
+def seen_recently(last_seen: datetime, days: int = 7) -> bool:
     """Calculate if the site was recently crawled."""
     if last_seen:
         if force_utc(last_seen) > (datetime.now(tzutc()) - timedelta(days=days)):
@@ -23,7 +23,7 @@ def site_seen_recently(last_seen: datetime, days: int = 7) -> bool:
     return False
 
 
-def crawl(url: URL, urls: List[URL], checkall) -> Tuple[list, dict]:
+def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=checkall,
@@ -37,7 +37,7 @@ def crawl(url: URL, urls: List[URL], checkall) -> Tuple[list, dict]:
             start_urls=urls,
         )
 
-        await spider.crawl(url)
+        await spider.crawl()
         return spider
 
     try:
@@ -110,7 +110,7 @@ def run_search(
             return matching_feeds, crawl_stats
 
     # Calculate if the site was recently crawled.
-    site_crawled_recently = site_seen_recently(
+    site_crawled_recently = seen_recently(
         site_feeds_data.get("last_seen"), app.config.get("DAYS_CHECKED_RECENTLY")
     )
 
@@ -124,21 +124,27 @@ def run_search(
         or force_crawl
         or searching_path
     ):
-        crawl_start_urls: List[URL] = []
+        crawl_start_urls: Set[URL] = {query_url}
+        existing_urls: List[str] = [str(x.url) for x in site_feed_list]
+
         # Fetch feeds from feedly.com
-        if check_feedly:
+        if check_feedly and not site_crawled_recently:
             feedly_feeds: List[URL] = fetch_feedly_feeds(str(query_url))
             if feedly_feeds:
                 app.logger.info("Feedly Feeds: %s", feedly_feeds)
-                crawl_start_urls.extend(feedly_feeds)
+                for link in feedly_feeds:
+                    if link not in existing_urls:
+                        crawl_start_urls.add(link)
 
-        try:
-            crawl_start_urls.extend([x.url for x in site_feed_list])
-        except (KeyError, ValueError):
-            pass
+        # Check each feed again if it has not be crawled recently
+        for feed in site_feed_list:
+            if not seen_recently(
+                feed.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
+            ):
+                crawl_start_urls.add(feed.url)
 
         # Crawl the start urls
-        crawl_feed_list, crawl_stats = crawl(query_url, crawl_start_urls, check_all)
+        crawl_feed_list, crawl_stats = crawl(list(crawl_start_urls), check_all)
         crawled = True
 
     now = datetime.now(tzutc())
