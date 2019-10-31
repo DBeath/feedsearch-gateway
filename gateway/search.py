@@ -129,12 +129,7 @@ def run_search(
 
         # Fetch feeds from feedly.com
         if check_feedly and not site_crawled_recently:
-            feedly_feeds: List[URL] = fetch_feedly_feeds(str(query_url))
-            if feedly_feeds:
-                app.logger.info("Feedly Feeds: %s", feedly_feeds)
-                for link in feedly_feeds:
-                    if link not in existing_urls:
-                        crawl_start_urls.add(link)
+            crawl_start_urls.update(fetch_feedly_feeds(str(query_url), existing_urls))
 
         # Check each feed again if it has not be crawled recently
         for feed in site_feed_list:

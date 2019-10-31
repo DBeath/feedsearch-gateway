@@ -64,11 +64,15 @@ async def fetch_feedly(query: str) -> List[URL]:
     return feed_urls
 
 
-def fetch_feedly_feeds(query: str) -> List[URL]:
+def fetch_feedly_feeds(query: str, existing_urls: List[str]) -> List[URL]:
     try:
         feed_urls = asyncio.run(fetch_feedly(query))
         app.logger.info("Feedly urls: %s", feed_urls)
-        return feed_urls
+        new_urls: List[URL] = []
+        for url in feed_urls:
+            if url not in existing_urls:
+                new_urls.append(url)
+        return new_urls
     except Exception as e:
         app.logger.exception("Search error: %s", e)
         return []
