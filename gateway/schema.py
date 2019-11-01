@@ -115,6 +115,62 @@ class DynamoDbSiteSchema(Schema):
         unknown = EXCLUDE
 
 
+class DynamoDbSitePathSchema(Schema):
+    host = fields.String()
+    last_seen = fields.DateTime()
+    path = fields.String(dump_only=True)
+    PK = fields.Method("sitepath_primary_key")
+    SK = fields.Method("sitepath_sort_key")
+
+    def sitepath_primary_key(self, obj):
+        if not obj.get("host"):
+            raise ValidationError("Host value must exist.")
+        return f"SITEPATH#{obj.get('host')}"
+
+    def site_sort_key(self, obj):
+        if not obj.get("path"):
+            raise ValidationError("Path value must exist.")
+        return f"PATH#{obj.get('path')}"
+
+    class Meta:
+        # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
+        unknown = EXCLUDE
+
+
+class SitePath:
+    def __init__(self, host: str, path: str, last_seen: datetime = None):
+        self.host = host
+        self.path = path
+        self.last_seen = last_seen
+
+    def dynamodb_serialize(self, last_seen: datetime):
+        return {
+            "PK": f"SITEPATH#{self.host}",
+            "SK": f"PATH#{self.path}",
+            "last_seen": last_seen,
+        }
+
+    @classmethod
+    def dynamodb_deserialize(cls, obj: dict):
+        host = obj.get("PK")[:9]
+        path = obj.get("SK")[:5]
+        last_seen = obj.get("last_seen")
+        return cls(host, path, last_seen)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__)
+            and self.host == other.host
+            and self.path == other.path
+        )
+
+    def __hash__(self):
+        return hash(f"{self.host}{self.path}")
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.host}{self.path})"
+
+
 class CustomFeedInfo(FeedInfo):
     last_seen: datetime = None
     host: str = ""

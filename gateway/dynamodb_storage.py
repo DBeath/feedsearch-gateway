@@ -1,18 +1,21 @@
+import logging
 import time
+from datetime import datetime
 from typing import Dict, List
 
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from marshmallow import ValidationError
 
-from gateway.schema import DynamoDbFeedInfoSchema, DynamoDbSiteSchema
-from boto3.dynamodb.conditions import Key, Attr
-import boto3
-from datetime import datetime
-import os
-import logging
+from gateway.schema import (
+    DynamoDbFeedInfoSchema,
+    DynamoDbSiteSchema,
+    DynamoDbSitePathSchema,
+)
 
 db_feed_schema = DynamoDbFeedInfoSchema(many=True)
 db_site_schema = DynamoDbSiteSchema()
+db_path_schema = DynamoDbSitePathSchema()
 
 logger = logging.getLogger("dynamodb")
 
@@ -39,6 +42,29 @@ def db_load_site_feeds(table, host: str) -> Dict:
         duration = int((time.perf_counter() - load_start) * 1000)
         logger.debug("Site Load: key=%s duration=%d", key, duration)
         return site
+    except ValidationError as e:
+        logger.warning("Dump errors: %s", e.messages)
+    except IndexError as e:
+        logger.error(e)
+
+
+def db_load_site_path(table, host: str, path: str) -> Dict:
+    try:
+        key = f"SITEPATH#{host}"
+        sort_key = f"PATH#{path}"
+        resp = table.query(
+            KeyConditionExpression=Key("PK").eq(key) & Key("SK").eq(sort_key)
+        )
+    except ClientError as e:
+        logger.error(e)
+        return {}
+
+    if not resp.get("Items"):
+        return {}
+
+    try:
+        existing_path = db_path_schema.load(resp.get("Items")[0])
+        return existing_path
     except ValidationError as e:
         logger.warning("Dump errors: %s", e.messages)
     except IndexError as e:
