@@ -1,10 +1,40 @@
 from datetime import datetime
+from typing import List
 
 from feedsearch_crawler import FeedInfo
 from marshmallow import Schema, fields, post_load, EXCLUDE, ValidationError, post_dump
 from yarl import URL
 
 from gateway.utils import remove_subdomains
+from abc import ABC, abstractmethod
+
+
+class DynamoDBObject(ABC):
+    @abstractmethod
+    def serialize_primary_key(self, obj):
+        raise NotImplementedError
+
+    @abstractmethod
+    def serialize_sort_key(self, obj):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def primary_key_prefix(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def sort_key_prefix(self):
+        raise NotImplementedError
+
+    @classmethod
+    def create_primary_key(cls, value: str) -> str:
+        return f"{cls.primary_key_prefix}{value}"
+
+    @classmethod
+    def create_sort_key(cls, value: str) -> str:
+        return f"{cls.sort_key_prefix}{value}"
 
 
 class NoneString(fields.String):
@@ -29,7 +59,7 @@ class URLField(fields.String):
             raise self.make_error("invalid") from error
 
 
-class FeedInfoSchema(Schema):
+class ExternalFeedInfoSchema(Schema):
     url = URLField()
     site_url = URLField(allow_none=True)
     title = NoneString(allow_none=True)
@@ -59,103 +89,120 @@ class FeedInfoSchema(Schema):
         return CustomFeedInfo(**data)
 
 
-class SiteFeedSchema(Schema):
+class ExternalSiteSchema(Schema):
     host = fields.String()
     last_seen = fields.DateTime()
-    feeds = fields.Nested(FeedInfoSchema, many=True)
+    feeds = fields.Nested(ExternalFeedInfoSchema, many=True)
 
     class Meta:
         # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
         unknown = EXCLUDE
 
 
-class DynamoDbFeedInfoSchema(FeedInfoSchema):
-    PK = fields.Method("feed_primary_key")
-    SK = fields.Method("feed_sort_key")
+class ExternalFeedInfoSchemaDynamoDbMeta(
+    type(ExternalFeedInfoSchema), type(DynamoDBObject)
+):
+    pass
+
+
+class SchemaDynamoDbMeta(type(Schema), type(DynamoDBObject)):
+    pass
+
+
+class DynamoDbFeedInfoSchema(
+    ExternalFeedInfoSchema, DynamoDBObject, metaclass=ExternalFeedInfoSchemaDynamoDbMeta
+):
+    primary_key_prefix = "SITE#"
+    sort_key_prefix = "FEED#"
+
+    PK = fields.Method("serialize_primary_key")
+    SK = fields.Method("serialize_sort_key")
     host = fields.String()
     velocity = fields.Decimal(allow_none=True)
 
-    def feed_primary_key(self, obj):
+    def serialize_primary_key(self, obj):
         if not obj.host:
             raise ValidationError("Site Host must exist.")
-        return f"SITE#{obj.host}"
+        return self.create_primary_key(obj.host)
 
-    def feed_sort_key(self, obj):
+    def serialize_sort_key(self, obj):
         if not obj.url:
             raise ValidationError("URL must exist.")
-        return f"FEED#{obj.url}"
+        return self.create_sort_key(obj.host)
 
     @post_load
     def make_feed_info(self, data, **kwargs):
         return CustomFeedInfo(**data)
 
     @post_dump
-    def remove_skip_values(self, data, **kwargs):
+    def remove_skip_values(self, data):
         return {key: value for key, value in data.items() if value is not None}
 
 
-class DynamoDbSiteSchema(Schema):
+class DynamoDbSiteSchema(Schema, DynamoDBObject, metaclass=SchemaDynamoDbMeta):
+    primary_key_prefix = "SITE#"
+    sort_key_prefix = "#METADATA#"
+
     host = fields.String()
     last_seen = fields.DateTime()
-    PK = fields.Method("site_primary_key")
-    SK = fields.Method("site_sort_key")
+    PK = fields.Method("serialize_primary_key")
+    SK = fields.Method("serialize_sort_key")
 
-    def site_primary_key(self, obj):
-        if not obj.get("host"):
+    def serialize_primary_key(self, obj):
+        if not obj.host:
             raise ValidationError("Host value must exist.")
-        return f"SITE#{obj.get('host')}"
+        return DynamoDbSiteSchema.create_primary_key(obj.host)
 
-    def site_sort_key(self, obj):
-        if not obj.get("host"):
+    def serialize_sort_key(self, obj):
+        if not obj.host:
             raise ValidationError("Host value must exist.")
-        return f"#METADATA#{obj.get('host')}"
+        return self.create_sort_key(obj.host)
 
-    class Meta:
-        # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
-        unknown = EXCLUDE
+    @post_load
+    def make_site_host(self, data, **kwargs):
+        return SiteHost(**data)
 
 
-class DynamoDbSitePathSchema(Schema):
-    host = fields.String()
+class DynamoDbSitePathSchema(Schema, DynamoDBObject, metaclass=SchemaDynamoDbMeta):
+    primary_key_prefix = "SITEPATH#"
+    sort_key_prefix = "PATH#"
+
+    host = fields.Method(
+        "serialize_primary_key", deserialize="load_host", data_key="PK"
+    )
+    path = fields.Method("serialize_sort_key", deserialize="load_path", data_key="SK")
     last_seen = fields.DateTime()
-    path = fields.String(dump_only=True)
-    PK = fields.Method("sitepath_primary_key")
-    SK = fields.Method("sitepath_sort_key")
+    feeds = fields.List(NoneString(), allow_none=True)
 
-    def sitepath_primary_key(self, obj):
-        if not obj.get("host"):
+    def serialize_primary_key(self, obj):
+        if not obj.host:
             raise ValidationError("Host value must exist.")
-        return f"SITEPATH#{obj.get('host')}"
+        return self.create_primary_key(obj.host)
 
-    def site_sort_key(self, obj):
-        if not obj.get("path"):
+    def serialize_sort_key(self, obj):
+        if not obj.path:
             raise ValidationError("Path value must exist.")
-        return f"PATH#{obj.get('path')}"
+        return self.create_sort_key(obj.path)
 
-    class Meta:
-        # Pass EXCLUDE as Meta option to keep marshmallow 2 behavior
-        unknown = EXCLUDE
+    def load_host(self, value):
+        return value.lstrip(self.primary_key_prefix)
+
+    def load_path(self, value):
+        return value.lstrip(self.sort_key_prefix)
+
+    @post_load
+    def make_site_path(self, data, **kwargs):
+        return SitePath(**data)
 
 
 class SitePath:
-    def __init__(self, host: str, path: str, last_seen: datetime = None):
+    def __init__(
+        self, host: str, path: str, last_seen: datetime = None, feeds: List[str] = None
+    ):
         self.host = host
         self.path = path
         self.last_seen = last_seen
-
-    def dynamodb_serialize(self, last_seen: datetime):
-        return {
-            "PK": f"SITEPATH#{self.host}",
-            "SK": f"PATH#{self.path}",
-            "last_seen": last_seen,
-        }
-
-    @classmethod
-    def dynamodb_deserialize(cls, obj: dict):
-        host = obj.get("PK")[:9]
-        path = obj.get("SK")[:5]
-        last_seen = obj.get("last_seen")
-        return cls(host, path, last_seen)
+        self.feeds = feeds
 
     def __eq__(self, other):
         return (
@@ -209,6 +256,24 @@ class CustomFeedInfo(FeedInfo):
         :param info: FeedInfo object
         """
         info.__class__ = cls
+
+
+class SiteHost:
+    def __init__(
+        self, host: str, last_seen: datetime = None, feeds: List[CustomFeedInfo] = None
+    ):
+        self.host = host
+        self.last_seen = last_seen
+        self.feeds = feeds or []
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and other.host == self.host
+
+    def __hash__(self):
+        return hash(f"{self.host}")
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.host})"
 
 
 def score_item(item: FeedInfo, original_url: URL):

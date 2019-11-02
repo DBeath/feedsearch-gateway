@@ -32,7 +32,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
 from gateway.search import run_search
 from gateway.utils import remove_subdomains, coerce_url
-from .schema import FeedInfoSchema, SiteFeedSchema
+from .schema import ExternalFeedInfoSchema, ExternalSiteSchema, SiteHost
 
 sentry_initialised = False
 
@@ -181,12 +181,12 @@ def get_site_feeds(url):
     """
     url = remove_subdomains(url)
 
-    site_feeds = db_load_site_feeds(db_table, url)
+    site = db_load_site_feeds(db_table, url)
 
-    if site_feeds:
+    if site:
         try:
-            site_schema = SiteFeedSchema()
-            result = site_schema.dump(site_feeds)
+            site_schema = ExternalSiteSchema()
+            result = site_schema.dump(site)
         except ValidationError as err:
             app.logger.warning("Dump errors: %s", err.messages)
             return abort(500)
@@ -257,7 +257,7 @@ def search_api():
             if not favicon:
                 kwargs["exclude"] = ["favicon_data_uri"]
 
-            feed_schema = FeedInfoSchema(many=True, **kwargs)
+            feed_schema = ExternalFeedInfoSchema(many=True, **kwargs)
 
             feed_list = sorted(feed_list, key=lambda x: x.score, reverse=True)
             dump_start = time.perf_counter()

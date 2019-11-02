@@ -84,18 +84,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:2945d8246e4c8875e3ae4aafffd028330ef681efc33e1475c1a805ed42540403",
-                "sha256:3d84311ce0f2fba83810f0e840b08e2b66246fc80dbb0a71fb992116f47b95bd"
+                "sha256:16425b461149e57cecf1afef53382f187ed325dddb764b1047aa47f78197d9e2",
+                "sha256:593f67dcf6417b8c39641236761604cf47134bc27c25ef4d7c3d22da824e2c05"
             ],
             "index": "pypi",
-            "version": "==1.10.6"
+            "version": "==1.10.8"
         },
         "botocore": {
             "hashes": [
-                "sha256:ac1a5caa10e3c4452714b17e6f30f05b4b6e57e0c80b19c1f4d72b234edf6646",
-                "sha256:fa6b9e619423f3891e7c11b98f2183da8173e3fed995271e93fd4a712ef45777"
+                "sha256:5cc7e0bfa41eb2789674485fdda62ce44ff5e3fee8accb4e0ef317ebdf1a319a",
+                "sha256:b565ce26203ce94fc94f8056951fedc16e1e0b02d1fbdbf8dca420e1fbe05d81"
             ],
-            "version": "==1.13.6"
+            "version": "==1.13.8"
         },
         "cchardet": {
             "hashes": [
@@ -221,11 +221,11 @@
         },
         "feedsearch-crawler": {
             "hashes": [
-                "sha256:8de9afdb311250da2c334fa549cb97e4a3bafe867623c48cc8b1e2cb48921d06",
-                "sha256:f9337c1a61990f8d8cee731f6099d5929650da53396d7b86b960d35fd1425f8b"
+                "sha256:269e3eb69337afca12f466eb4f94e556abc4d25128e968f47ecbb90b60a90202",
+                "sha256:bee9eafc28b18bec0893703ccc0c90462bbc263be32f1436602ad12788a271b9"
             ],
             "index": "pypi",
-            "version": "==0.1.19"
+            "version": "==0.1.21"
         },
         "flask": {
             "hashes": [
@@ -526,10 +526,10 @@
         },
         "soupsieve": {
             "hashes": [
-                "sha256:605f89ad5fdbfefe30cdc293303665eff2d188865d4dbe4eb510bba1edfbfce3",
-                "sha256:b91d676b330a0ebd5b21719cb6e9b57c57d433671f65b9c28dd3461d9a1ed0b6"
+                "sha256:bdb0d917b03a1369ce964056fc195cfdff8819c40de04695a80bc813c3cfa1f5",
+                "sha256:e2c1c5dee4a1c36bcb790e0fabd5492d874b8ebd4617622c4f6a731701060dda"
             ],
-            "version": "==1.9.4"
+            "version": "==1.9.5"
         },
         "toml": {
             "hashes": [

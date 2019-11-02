@@ -1,4 +1,11 @@
-from gateway.schema import CustomFeedInfo
+from datetime import datetime
+
+from gateway.schema import (
+    CustomFeedInfo,
+    DynamoDbSitePathSchema,
+    SitePath,
+    DynamoDbSiteSchema,
+)
 
 
 def test_sitefeed_schema_loads(sitefeed_schema, sitefeed_json):
@@ -19,5 +26,30 @@ def test_sitefeed_schema_loads(sitefeed_schema, sitefeed_json):
     assert feed2.version == "atom10"
 
 
+def test_site_schema(sitefeed_json):
+    schema = DynamoDbSiteSchema()
+
+
 def test_feedinfo_schema_loads():
     pass
+
+
+def test_sitepath_schema():
+    schema = DynamoDbSitePathSchema()
+
+    feeds = ["test.com/testing/rss.xml", "test.com/testing/atom.xml"]
+
+    sitepath = SitePath(
+        host="test.com", path="/testing", last_seen=datetime(2019, 1, 1), feeds=feeds
+    )
+
+    serialized = schema.dump(sitepath)
+    assert serialized.get("PK") == "SITEPATH#test.com"
+    assert serialized.get("SK") == "PATH#/testing"
+    assert serialized.get("feeds") == feeds
+
+    deserialized = schema.load(serialized)
+    assert isinstance(deserialized, SitePath)
+    assert deserialized.host == "test.com"
+    assert deserialized.path == "/testing"
+    assert deserialized.feeds == feeds

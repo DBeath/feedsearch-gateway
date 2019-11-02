@@ -1,7 +1,6 @@
 import logging
 import time
-from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
@@ -11,6 +10,8 @@ from gateway.schema import (
     DynamoDbFeedInfoSchema,
     DynamoDbSiteSchema,
     DynamoDbSitePathSchema,
+    SiteHost,
+    CustomFeedInfo,
 )
 
 db_feed_schema = DynamoDbFeedInfoSchema(many=True)
@@ -20,32 +21,35 @@ db_path_schema = DynamoDbSitePathSchema()
 logger = logging.getLogger("dynamodb")
 
 
-def db_load_site_feeds(table, host: str) -> Dict:
+def db_load_site_feeds(table, site: Union[str, SiteHost]) -> SiteHost:
+    if isinstance(site, str):
+        site = SiteHost(site)
     try:
         query_start = time.perf_counter()
-        key = f"SITE#{host}"
+        key = DynamoDbSiteSchema.create_primary_key(site.host)
         resp = table.query(KeyConditionExpression=Key("PK").eq(key))
         duration = int((time.perf_counter() - query_start) * 1000)
         logger.debug("Site Query: key=%s duration=%d", key, duration)
     except ClientError as e:
         logger.error(e)
-        return {}
+        return site
 
     if not resp.get("Items"):
-        return {}
+        return site
 
     try:
         load_start = time.perf_counter()
-        site = db_site_schema.load(resp.get("Items")[0])
-        feeds = db_feed_schema.load(resp.get("Items")[1:])
-        site["feeds"] = feeds
+        site: SiteHost = db_site_schema.load(resp.get("Items")[0])
+        feeds: List[CustomFeedInfo] = db_feed_schema.load(resp.get("Items")[1:])
+        site.feeds = feeds
         duration = int((time.perf_counter() - load_start) * 1000)
         logger.debug("Site Load: key=%s duration=%d", key, duration)
-        return site
     except ValidationError as e:
         logger.warning("Dump errors: %s", e.messages)
     except IndexError as e:
         logger.error(e)
+
+    return site
 
 
 def db_load_site_path(table, host: str, path: str) -> Dict:
@@ -71,13 +75,12 @@ def db_load_site_path(table, host: str, path: str) -> Dict:
         logger.error(e)
 
 
-def db_save_site_feeds(table, host: str, last_seen: datetime, feeds) -> None:
+def db_save_site_feeds(table, site: SiteHost, feeds: List[CustomFeedInfo]) -> None:
     try:
-        site = {"host": host, "last_seen": last_seen}
         for feed in feeds:
-            feed.host = host
-        dumped_site = db_site_schema.dump(site)
-        dumped_feeds = db_feed_schema.dump(feeds)
+            feed.host = site.host
+        dumped_site: Dict = db_site_schema.dump(site)
+        dumped_feeds: Dict = db_feed_schema.dump(feeds)
     except ValidationError as e:
         logger.warning("Dump errors: %s", e.messages)
         return

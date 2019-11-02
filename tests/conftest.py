@@ -1,5 +1,5 @@
 import pytest
-from gateway.schema import FeedInfoSchema, SiteFeedSchema
+from gateway.schema import ExternalFeedInfoSchema, ExternalSiteSchema
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -7,17 +7,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @pytest.fixture(scope="session")
 def feedinfo_schema_many():
-    return FeedInfoSchema(many=True)
+    return ExternalFeedInfoSchema(many=True)
 
 
 @pytest.fixture(scope="session")
 def feedinfo_schema():
-    return FeedInfoSchema()
+    return ExternalFeedInfoSchema()
 
 
 @pytest.fixture(scope="session")
 def sitefeed_schema():
-    return SiteFeedSchema()
+    return ExternalSiteSchema()
 
 
 @pytest.fixture(scope="session")
