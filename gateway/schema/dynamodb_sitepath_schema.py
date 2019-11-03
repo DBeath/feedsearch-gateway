@@ -6,7 +6,7 @@ from gateway.schema.fields import NoneString
 
 
 class DynamoDbSitePathSchema(Schema, DynamoDBSchema, metaclass=SchemaDynamoDbMeta):
-    primary_key_prefix = "SITEPATH#"
+    primary_key_prefix = "SITE#"
     sort_key_prefix = "PATH#"
 
     host = fields.Method(

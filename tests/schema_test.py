@@ -78,7 +78,7 @@ def test_sitepath_schema():
     )
 
     serialized = schema.dump(sitepath)
-    assert serialized.get("PK") == "SITEPATH#test.com"
+    assert serialized.get("PK") == "SITE#test.com"
     assert serialized.get("SK") == "PATH#/testing"
     assert serialized.get("feeds") == feeds
 

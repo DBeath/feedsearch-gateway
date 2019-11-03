@@ -31,23 +31,22 @@
   <ul>
     <li>When the scheme (e.g. "https://") is not provided in the "url" value, the scheme will default to "http://".</li>
     <li>A request URL that contains only the domain and no path (e.g. "http://example.com" or "example.com") will always return all previously found feeds associated with that domain.</li>
-    <li>A request URL that contains a path (e.g. "https://example.com/test", or "example.com/rss.xml" ) will always crawl the path, and return only feeds found
+    <li>A request URL that contains a path (e.g. "https://example.com/test", or "example.com/rss.xml" ) will return only those feeds found
     from that particular crawl.</li>
     <li>An individual feed can be crawled by passing in the full URL to that feed. If you know the specific location of a feed, but that feed doesn't appear
-    in the results for a domain, then please query the feed's specific URL. The API will associate the feed with it's root domain,
+    in the results for a domain, then please query the feed's specific URL. The API will associate the feed with its root domain,
     and will then return the feed upon subsequent queries for that domain.</li>
   </ul>
 
   <h3 class="subheading">Query Parameters</h3>
   <p>The Feedsearch API accepts the following query parameters:</p>
   <ul>
-    <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not set.</li>
+    <li><b>url</b>: The <a href="https://en.wikipedia.org/wiki/Uniform_Resource_Identifier">URL</a> to search. Will return 400 Bad Request if not sent.</li>
     <li><b>info</b>: Returns all feed metadata as below. Defaults True. If False, only found URLs are returned, and all other values will be empty or default.</li>
     <li><b>favicon</b>: Returns the favicon as a <a href="https://en.wikipedia.org/wiki/Data_URI_scheme">Data Uri</a>. Defaults False.</li>
-    <li><b>checkall</b>: Attempts to search a range of possible feed paths for at the URL. Defaults False.</li>
     <li><b>opml</b>: Return the feeds as an <a href="https://en.wikipedia.org/wiki/OPML">OPML</a> XML string. Defaults False.</li>
   </ul>
-  <pre><code>curl "{{ url_for('search_api', url='arstechnica.com', info='true', favicon='false', checkall='false', opml='false', _external=true) }}"</code></pre>
+  <pre><code>curl "{{ url_for('search_api', url='arstechnica.com', info='true', favicon='false', opml='false', _external=true) }}"</code></pre>
 
   <h3 class="subheading">API Response</h3>
   <p>The Feedsearch API returns a list of found feeds in <a href="https://en.wikipedia.org/wiki/JSON">JSON format</a>, with attached metadata about the feed.</p>

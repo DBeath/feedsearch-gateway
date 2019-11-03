@@ -9,10 +9,15 @@ from flask import current_app as app
 from werkzeug.exceptions import abort
 from yarl import URL
 
-from gateway.dynamodb_storage import db_load_site_feeds, db_save_site_feeds
+from gateway.dynamodb_storage import (
+    db_load_site_feeds,
+    db_save_site_feeds,
+    db_load_site_path,
+)
 from gateway.feedly import fetch_feedly_feeds
 from gateway.schema.customfeedinfo import CustomFeedInfo
 from gateway.schema.sitehost import SiteHost
+from gateway.schema.sitepath import SitePath
 from gateway.utils import force_utc, remove_subdomains, remove_scheme, has_path
 
 
@@ -91,7 +96,8 @@ def run_search(
     # that may be on specialised feed subdomains with the host website.
     host = remove_subdomains(query_url.host)
 
-    site: SiteHost = SiteHost(host)
+    site = SiteHost(host)
+    site_path = SitePath(host, query_url.path)
     crawl_stats: Dict = {}
 
     if app.config.get("DYNAMODB_TABLE"):
@@ -102,11 +108,30 @@ def run_search(
             "Site DB Load: feeds=%d duration=%d", len(site.feeds), load_duration
         )
 
-    # If we find matches to the query in the existing feed list then return those feeds.
-    if searching_path and site.feeds and not force_crawl:
-        matching_feeds = find_feeds_with_matching_url(query_url, site.feeds)
-        if matching_feeds:
-            return matching_feeds, crawl_stats
+        # Check if the path has already been crawled recently, and if so return matching feeds.
+        if searching_path and site.feeds and not force_crawl:
+            load_start = time.perf_counter()
+            site_path: SitePath = db_load_site_path(db_table, site_path)
+            load_duration = int((time.perf_counter() - load_start) * 1000)
+            app.logger.debug(
+                "Sitepath DB Load: feeds=%d duration=%d",
+                len(site_path.feeds),
+                load_duration,
+            )
+
+            site_path_crawled_recently = seen_recently(
+                site_path.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
+            )
+
+            # Return previously found feeds if path has already been crawled recently.
+            if site_path_crawled_recently:
+                matching_feeds: Set[CustomFeedInfo] = set()
+                for url in site_path.feeds:
+                    feed = site.feeds.get(url)
+                    if feed:
+                        matching_feeds.add(feed)
+
+                return list(matching_feeds), crawl_stats
 
     # Calculate if the site was recently crawled.
     site_crawled_recently = seen_recently(
@@ -125,14 +150,15 @@ def run_search(
         if check_feedly and not site_crawled_recently:
             crawl_start_urls.update(fetch_feedly_feeds(str(query_url), existing_urls))
 
-        # Check each feed again if it has not be crawled recently
-        for feed in site.feeds.values():
-            if not seen_recently(
-                feed.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
-            ):
-                crawl_start_urls.add(feed.url)
+        # Check each feed again if it has not been crawled recently.
+        if not searching_path:
+            for feed in site.feeds.values():
+                if not seen_recently(
+                    feed.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
+                ):
+                    crawl_start_urls.add(feed.url)
 
-        # Crawl the start urls
+        # Crawl the start urls.
         crawl_feed_list, crawl_stats = crawl(list(crawl_start_urls), check_all)
         crawled = True
 
@@ -158,8 +184,10 @@ def run_search(
 
     # Only upload new file if crawl occurred.
     if crawled and app.config.get("DYNAMODB_TABLE"):
+        site_path.feeds = [str(feed.url) for feed in crawl_feed_list]
+        site_path.last_seen = now
         save_start = time.perf_counter()
-        db_save_site_feeds(db_table, site, all_feeds)
+        db_save_site_feeds(db_table, site, all_feeds, site_path)
         save_duration = int((time.perf_counter() - save_start) * 1000)
         app.logger.info(
             "Site DB Save: feeds=%d duration=%d", len(all_feeds), save_duration

@@ -9,7 +9,7 @@ class SitePath:
         self.host = host
         self.path = path
         self.last_seen = last_seen
-        self.feeds = feeds
+        self.feeds = feeds or []
 
     def __eq__(self, other):
         return (
