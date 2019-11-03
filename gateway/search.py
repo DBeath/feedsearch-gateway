@@ -11,7 +11,8 @@ from yarl import URL
 
 from gateway.dynamodb_storage import db_load_site_feeds, db_save_site_feeds
 from gateway.feedly import fetch_feedly_feeds
-from gateway.schema import CustomFeedInfo, SiteHost
+from gateway.schema.customfeedinfo import CustomFeedInfo
+from gateway.schema.sitehost import SiteHost
 from gateway.utils import force_utc, remove_subdomains, remove_scheme, has_path
 
 
@@ -51,19 +52,19 @@ def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
 
 
 def find_feeds_with_matching_url(
-    query_url: Union[URL, str], feed_list: List[CustomFeedInfo]
+    query_url: Union[URL, str], feeds: Dict[str, CustomFeedInfo]
 ) -> List[CustomFeedInfo]:
     """
     Find a feed whose URL matches the query URL. Ignores url scheme.
 
     :param query_url: URL to query, as string or URL object.
-    :param feed_list: List of Feeds to query.
+    :param feeds: Dict of Feeds to query.
     :return: Matching Feed or None
     """
     matches: List[CustomFeedInfo] = []
     query = remove_scheme(query_url)
-    for feed in feed_list:
-        if remove_scheme(feed.url) == query:
+    for url, feed in feeds:
+        if remove_scheme(url) == query:
             matches.append(feed)
     return matches
 
@@ -118,14 +119,14 @@ def run_search(
     # Always crawl the site if the following conditions are met.
     if not site_crawled_recently or force_crawl or searching_path:
         crawl_start_urls: Set[URL] = {query_url}
-        existing_urls: List[str] = [str(x.url) for x in site.feeds]
+        existing_urls: List[str] = list(site.feeds.keys())
 
         # Fetch feeds from feedly.com
         if check_feedly and not site_crawled_recently:
             crawl_start_urls.update(fetch_feedly_feeds(str(query_url), existing_urls))
 
         # Check each feed again if it has not be crawled recently
-        for feed in site.feeds:
+        for feed in site.feeds.values():
             if not seen_recently(
                 feed.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
             ):
@@ -135,27 +136,23 @@ def run_search(
         crawl_feed_list, crawl_stats = crawl(list(crawl_start_urls), check_all)
         crawled = True
 
-    now = datetime.now(tzutc())
+    now = force_utc(datetime.now(tzutc()))
     site.last_seen = now
-
-    feed_dict = {}
-    for feed in site.feeds:
-        if feed.is_valid:
-            feed_dict[str(feed.url)] = feed
 
     for feed in crawl_feed_list:
         CustomFeedInfo.upgrade_feedinfo(feed)
         feed.last_seen = now
-        feed.host = host
-        existing_feed = feed_dict.get(str(feed.url))
+        feed.host = site.host
+        existing_feed = site.feeds.get(str(feed.url))
         if existing_feed:
             feed.merge(existing_feed)
         if feed.is_valid:
-            feed_dict[str(feed.url)] = feed
+            site.feeds[str(feed.url)] = feed
 
-    all_feeds: List[CustomFeedInfo] = list(feed_dict.values())
+    all_feeds: List[CustomFeedInfo] = list(site.feeds.values())
 
     for feed in all_feeds:
+        feed.host = site.host
         if feed.last_updated:
             feed.last_updated = force_utc(feed.last_updated)
 
@@ -172,6 +169,6 @@ def run_search(
     if searching_path:
         feed_list = crawl_feed_list
     else:
-        feed_list = list(all_feeds)
+        feed_list = all_feeds
 
     return feed_list, crawl_stats

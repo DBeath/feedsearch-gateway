@@ -30,9 +30,10 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
+from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
+from gateway.schema.external_site_schema import ExternalSiteSchema
 from gateway.search import run_search
 from gateway.utils import remove_subdomains, coerce_url
-from .schema import ExternalFeedInfoSchema, ExternalSiteSchema, SiteHost
 
 sentry_initialised = False
 
@@ -69,7 +70,7 @@ app.config["FLASKS3_CDN_DOMAIN"] = os.environ.get("CDN_DOMAIN")
 app.config["FLASKS3_ACTIVE"] = False
 app.config["FLASK_ASSETS_USE_S3"] = False
 
-if os.environ.get("FLASKS3_ACTIVE") == True:
+if os.environ.get("FLASKS3_ACTIVE") is True:
     app.config["FLASKS3_ACTIVE"] = True
     app.config["FLASK_ASSETS_USE_S3"] = True
 
@@ -118,6 +119,7 @@ def initialise_sentry():
 initialise_sentry()
 
 
+# noinspection PyUnusedLocal
 def unhandled_exceptions(e, event, context):
     initialise_sentry()
     sentry_sdk.capture_exception(e)

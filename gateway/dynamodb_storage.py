@@ -6,13 +6,11 @@ from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from marshmallow import ValidationError
 
-from gateway.schema import (
-    DynamoDbFeedInfoSchema,
-    DynamoDbSiteSchema,
-    DynamoDbSitePathSchema,
-    SiteHost,
-    CustomFeedInfo,
-)
+from gateway.schema.customfeedinfo import CustomFeedInfo
+from gateway.schema.dynamodb_feedinfo_schema import DynamoDbFeedInfoSchema
+from gateway.schema.dynamodb_site_schema import DynamoDbSiteSchema
+from gateway.schema.dynamodb_sitepath_schema import DynamoDbSitePathSchema
+from gateway.schema.sitehost import SiteHost
 
 db_feed_schema = DynamoDbFeedInfoSchema(many=True)
 db_site_schema = DynamoDbSiteSchema()
@@ -41,7 +39,7 @@ def db_load_site_feeds(table, site: Union[str, SiteHost]) -> SiteHost:
         load_start = time.perf_counter()
         site: SiteHost = db_site_schema.load(resp.get("Items")[0])
         feeds: List[CustomFeedInfo] = db_feed_schema.load(resp.get("Items")[1:])
-        site.feeds = feeds
+        site.load_feeds(feeds)
         duration = int((time.perf_counter() - load_start) * 1000)
         logger.debug("Site Load: key=%s duration=%d", key, duration)
     except ValidationError as e:
@@ -77,8 +75,6 @@ def db_load_site_path(table, host: str, path: str) -> Dict:
 
 def db_save_site_feeds(table, site: SiteHost, feeds: List[CustomFeedInfo]) -> None:
     try:
-        for feed in feeds:
-            feed.host = site.host
         dumped_site: Dict = db_site_schema.dump(site)
         dumped_feeds: Dict = db_feed_schema.dump(feeds)
     except ValidationError as e:
@@ -96,7 +92,9 @@ def db_save_site_feeds(table, site: SiteHost, feeds: List[CustomFeedInfo]) -> No
 
 def db_list_sites(table) -> List[Dict]:
     try:
-        resp = table.scan(FilterExpression=Key("SK").begins_with("#METADATA#"))
+        resp = table.scan(
+            FilterExpression=Key("SK").begins_with(DynamoDbSiteSchema.sort_key_prefix)
+        )
     except ClientError as e:
         logger.error(e)
         return []

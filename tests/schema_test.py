@@ -1,11 +1,15 @@
 from datetime import datetime
+from decimal import Decimal
 
-from gateway.schema import (
-    CustomFeedInfo,
-    DynamoDbSitePathSchema,
-    SitePath,
-    DynamoDbSiteSchema,
-)
+from dateutil import tz
+from yarl import URL
+
+from gateway.schema.customfeedinfo import CustomFeedInfo
+from gateway.schema.dynamodb_feedinfo_schema import DynamoDbFeedInfoSchema
+from gateway.schema.dynamodb_site_schema import DynamoDbSiteSchema
+from gateway.schema.dynamodb_sitepath_schema import DynamoDbSitePathSchema
+from gateway.schema.sitehost import SiteHost
+from gateway.schema.sitepath import SitePath
 
 
 def test_sitefeed_schema_loads(sitefeed_schema, sitefeed_json):
@@ -32,6 +36,36 @@ def test_site_schema(sitefeed_json):
 
 def test_feedinfo_schema_loads():
     pass
+
+
+def test_dynamodb_feedinfo_schema_load():
+    value = {
+        "PK": "SITE#en.wikipedia.org",
+        "SK": "FEED#https://en.wikipedia.org?feed=potd&format=atom",
+        "host": "en.wikipedia.org",
+        "url": "https://en.wikipedia.org?feed=potd&format=atom",
+        "last_seen": "2019-11-03T08:50:43+00:00",
+    }
+    schema = DynamoDbFeedInfoSchema()
+    feed = schema.load(value)
+    assert isinstance(feed, CustomFeedInfo)
+    assert feed.host == "en.wikipedia.org"
+    assert feed.url == URL("https://en.wikipedia.org?feed=potd&format=atom")
+    assert feed.last_seen == datetime(2019, 11, 3, 8, 50, 43, tzinfo=tz.tzutc())
+
+
+def test_dynamodb_site_schema_load():
+    value = {
+        "PK": "SITE#en.wikipedia.org",
+        "SK": "#METADATA#en.wikipedia.org",
+        "host": "en.wikipedia.org",
+        "last_seen": "2019-11-03T08:50:43+00:00",
+    }
+    schema = DynamoDbSiteSchema()
+    site = schema.load(value)
+    assert isinstance(site, SiteHost)
+    assert site.host == "en.wikipedia.org"
+    assert site.last_seen == datetime(2019, 11, 3, 8, 50, 43, tzinfo=tz.tzutc())
 
 
 def test_sitepath_schema():

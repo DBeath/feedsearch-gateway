@@ -54,11 +54,12 @@ async def fetch_feedly(query: str) -> List[URL]:
                     continue
 
                 try:
-                    feedId = result.get("feedId")
-                    if feedId.startswith("feed/"):
-                        feedId = feedId[5:]
-                    feed_urls.append(URL(feedId))
-                except:
+                    feed_id = result.get("feedId", "")
+                    if feed_id.startswith("feed/"):
+                        feed_id = feed_id[5:]
+                    if feed_id:
+                        feed_urls.append(URL(feed_id))
+                except IndexError:
                     pass
 
     return feed_urls
