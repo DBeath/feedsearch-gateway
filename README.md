@@ -1,8 +1,8 @@
-# feedsearch-gateway
+# Feedsearch Gateway
 
-Serverless AWS API using [Zappa](https://github.com/Miserlou/Zappa) for the [Feedsearch Python package](https://github.com/DBeath/feedsearch).
+Serverless AWS API using [Zappa](https://github.com/Miserlou/Zappa) for the [Feedsearch Crawler Python package](https://github.com/DBeath/feedsearch-crawler).
 
-Live at [Feedsearch](https://feedsearch.auctorial.com/)
+Live at https://feedsearch.dev
 
 ## Setup
 
@@ -13,16 +13,23 @@ Install [Pipenv](https://docs.pipenv.org/en/latest/install/#installing-pipenv).
 The following environment variables are required:
 
 ```bash
-USER_AGENT="The HTTP user agent"
-FLASK_S3_BUCKET_NAME="The name of the S3 bucket to serve static files"
-DYNAMODB_TABLE="The name of the dynamodb table for storing found feeds"
+USER_AGENT="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.dev)"
+FLASK_S3_BUCKET_NAME="feedsearch-bucket"
+DYNAMODB_TABLE="feedsearch-table"
+SERVER_NAME="feedsearch.dev"
 ```
+
+- *USER_AGENT* : HTTP [User-Agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) string.
+- *FLASK_S3_BUCKET_NAME* : The name of the [S3](https://aws.amazon.com/s3/) bucket that serves static files.
+- *DYNAMODB_TABLE* : The name of the [DynamoDB](https://aws.amazon.com/dynamodb/) table for storing found feeds.
+- *SERVER_NAME* : The [host url](https://flask.palletsprojects.com/en/1.1.x/config/#SERVER_NAME) of the site.
 
 For local development, add the environment variables to a `.env` file.
 
-For production or testing in AWS, add them to the Environment Variables in Lambda.
+For production or testing in AWS, add them to the Environment Variables in Lambda, either directly 
+or in in the `zappa_settings.json` file.
 
-Update the settings in the `zappa_settings.json` file.
+Update the [other settings](https://github.com/Miserlou/Zappa#advanced-settings) in the `zappa_settings.json` file as required.
 
 Run the `create_table.py` script.
 
