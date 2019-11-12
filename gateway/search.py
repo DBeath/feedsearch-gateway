@@ -41,6 +41,7 @@ def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
             delay=0,
             user_agent=app.config.get("USER_AGENT"),
             start_urls=urls,
+            crawl_hosts=True,
         )
 
         await spider.crawl()

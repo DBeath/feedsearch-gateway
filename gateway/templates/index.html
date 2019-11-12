@@ -103,7 +103,13 @@
   <p>Feedsearch API is a wrapper around the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler</a> library,
   which is available as a <a href="https://www.python.org/">Python</a> package on <a href="https://pypi.org/project/feedsearch-crawler/">PyPI</a>.</p>
   <p>Further documentation and source code for the crawler can be found at the <a href="https://github.com/DBeath/feedsearch-crawler">Feedsearch-Crawler GitHub repository</a>.</p>
-  <p>Feedsearch was originally written to power the feed search function at <a href="https://auctorial.com">Auctorial</a>.</p>
+  <p>Feedsearch API was originally written to power the feed search function at <a href="https://auctorial.com">Auctorial</a>.</p>
+
+  <p>Feedsearch API acts as a <a href="https://en.wikipedia.org/wiki/Web_crawler">Web crawler</a>. It only crawls a site
+    in response to a direct request, not as an automated crawler. It's designed to be as selective as possible in which URLs it crawls while looking for feeds,
+  and stores information on crawled paths in order to reduce the load on crawled sites as much as possible. It does not
+  attempt to bypass privacy pages, captchas, or any other anti-crawling measures.</p>
+  <p>If you have any issues with our crawling, or just wish to get in touch, please contact <a href="mailto:support@auctorial.com">support@auctorial.com</a></p>
 
 </div>
 {% endblock %}
