@@ -5,6 +5,9 @@ from typing import Union
 from dateutil import tz, parser
 from yarl import URL
 
+subdomain_regex = re.compile(r"^(feeds?|www|rss|api)\.", re.IGNORECASE)
+scheme_regex = re.compile(r"^[a-z]{2,5}://", re.IGNORECASE)
+
 
 def force_utc(dt: datetime) -> datetime:
     """
@@ -68,9 +71,7 @@ def remove_subdomains(host: str) -> str:
     """
     split = host.split(".")
     if len(split) > 2:
-        host = re.sub(
-            r"^(feeds?|www|rss|api)\.", "", host, count=1, flags=re.IGNORECASE
-        )
+        host = subdomain_regex.sub("", host, count=1)
     return host
 
 
@@ -83,7 +84,7 @@ def remove_scheme(url: Union[URL, str]) -> str:
     """
     if isinstance(url, URL):
         url = str(url)
-    return re.sub(r"^[a-z]{2,5}://", "", url.strip(), count=1, flags=re.IGNORECASE)
+    return scheme_regex.sub("", url.strip(), count=1)
 
 
 def coerce_url(url: Union[URL, str], https: bool = False) -> URL:

@@ -14,7 +14,7 @@ from gateway.dynamodb_storage import (
     db_save_site_feeds,
     db_load_site_path,
 )
-from gateway.feedly import fetch_feedly_feeds
+from gateway.feedly import fetch_feedly_feeds, validate_feedly_urls
 from gateway.schema.customfeedinfo import CustomFeedInfo
 from gateway.schema.sitehost import SiteHost
 from gateway.schema.sitepath import SitePath
@@ -92,10 +92,10 @@ def run_search(
     :param check_all: Check additional paths of the query url
     :return: Tuple of List of Feeds and crawl stats
     """
-    searching_path = has_path(query_url)
+    searching_path: bool = has_path(query_url)
     # Remove certain feed or www. subdomains to get the root host domain. This way it's easier to match feeds
     # that may be on specialised feed subdomains with the host website.
-    host = remove_subdomains(query_url.host)
+    host: str = remove_subdomains(query_url.host)
 
     site = SiteHost(host)
     site_path = SitePath(host, query_url.path)
@@ -149,7 +149,11 @@ def run_search(
 
         # Fetch feeds from feedly.com
         if check_feedly and not site_crawled_recently:
-            crawl_start_urls.update(fetch_feedly_feeds(str(query_url), existing_urls))
+            feedly_urls = fetch_feedly_feeds(str(query_url))
+            if feedly_urls:
+                crawl_start_urls.update(
+                    validate_feedly_urls(feedly_urls, existing_urls, host)
+                )
 
         # Check each feed again if it has not been crawled recently.
         if not searching_path:

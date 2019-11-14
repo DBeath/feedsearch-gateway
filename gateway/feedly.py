@@ -6,7 +6,7 @@ import aiohttp
 from flask import current_app as app
 from yarl import URL
 
-from gateway.utils import truncate_integer
+from gateway.utils import truncate_integer, remove_subdomains
 
 
 def is_stale_feed(last_updated: int, stale_feed_date: datetime) -> bool:
@@ -33,8 +33,15 @@ def is_stale_feed(last_updated: int, stale_feed_date: datetime) -> bool:
     return True
 
 
-async def fetch_feedly(query: str) -> List[URL]:
-    feed_urls = []
+async def fetch_feedly(query: str) -> List[str]:
+    """
+    Call the Feedly API for searching feeds, and return the URLs of feeds that have been updated
+    in the last 3 months.
+
+    :param query: search query
+    :return: List of URLs
+    """
+    feed_urls: List[str] = []
 
     params = {"query": query}
     headers = {"user-agent": app.config.get("USER_AGENT")}
@@ -58,22 +65,49 @@ async def fetch_feedly(query: str) -> List[URL]:
                     if feed_id.startswith("feed/"):
                         feed_id = feed_id[5:]
                     if feed_id:
-                        feed_urls.append(URL(feed_id))
+                        feed_urls.append(feed_id)
                 except IndexError:
                     pass
 
     return feed_urls
 
 
-def fetch_feedly_feeds(query: str, existing_urls: List[str]) -> List[URL]:
+def validate_feedly_urls(
+    existing_urls: List[str], feedly_urls: List[str], host: str
+) -> List[URL]:
+    """
+    Validate Feedly URLs against the existing URLs and the query host, and return new URLs from Feedly.
+
+    :param existing_urls: List of existing URL strings.
+    :param feedly_urls: List of URL strings returned from Feedly.
+    :param host: host domain of the query
+    :return: List of new URL objects
+    """
+    new_urls: List[URL] = []
+    for url in feedly_urls:
+        if url not in existing_urls:
+            try:
+                parsed_url = URL(url)
+                if remove_subdomains(parsed_url.host) == host:
+                    new_urls.append(parsed_url)
+            except Exception as e:
+                app.logger.error("URL Parse error: %s", e)
+
+    app.logger.info("New Feedly urls: %s", new_urls)
+    return new_urls
+
+
+def fetch_feedly_feeds(query: str) -> List[str]:
+    """
+    Call the Feedly API in an async session, and match returned URLs against existing URLs.
+
+    :param query: The query string
+    :return: List of found URL strings
+    """
     try:
-        feed_urls = asyncio.run(fetch_feedly(query))
+        feed_urls: List[str] = asyncio.run(fetch_feedly(query))
         app.logger.info("Feedly urls: %s", feed_urls)
-        new_urls: List[URL] = []
-        for url in feed_urls:
-            if url not in existing_urls:
-                new_urls.append(url)
-        return new_urls
+        return feed_urls
     except Exception as e:
         app.logger.exception("Search error: %s", e)
         return []
