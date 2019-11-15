@@ -75,12 +75,42 @@ def find_feeds_with_matching_url(
     return matches
 
 
+def should_run_crawl(
+    force_crawl: bool, skip_crawl: bool, searching_path: bool, crawled_recently: bool
+) -> bool:
+    """
+    Check whether to run the crawl.
+
+    Always crawl if force_crawl is True.
+    Otherwise, never crawl if skip_crawl is True.
+
+    Assuming neither of the above are true, then crawl if searching_path is True or crawled_recently is False.
+
+    :param force_crawl: Always crawl if True.
+    :param skip_crawl: Never crawl if True, unless force_crawl is also True.
+    :param searching_path: If the above are both false, then crawl if we're searching a path.
+    :param crawled_recently: If all the above are False, then crawl if this is also False, as we
+        haven't crawled this path recently.
+    :return: True if we should crawl.
+    """
+    if force_crawl:
+        return True
+    elif skip_crawl:
+        return False
+    elif searching_path:
+        return True
+    elif not crawled_recently:
+        return True
+    return False
+
+
 def run_search(
     db_table,
     query_url: URL,
     check_feedly: bool = True,
     force_crawl: bool = False,
     check_all: bool = False,
+    skip_crawl: bool = False,
 ) -> Tuple[List[CustomFeedInfo], Dict]:
     """
     Run a search of the query URL.
@@ -89,6 +119,7 @@ def run_search(
     :param query_url: URL to be searched
     :param check_feedly: Query Feedly for feeds matching the query url
     :param force_crawl: Force a crawl of the query url
+    :param skip_crawl: Skip the crawl unless force_crawl is True
     :param check_all: Check additional paths of the query url
     :return: Tuple of List of Feeds and crawl stats
     """
@@ -142,8 +173,13 @@ def run_search(
     crawl_feed_list: List[CustomFeedInfo] = []
     crawled = False
 
-    # Always crawl the site if the following conditions are met.
-    if not site_crawled_recently or force_crawl or searching_path:
+    # Crawl the site if the following conditions are met.
+    if should_run_crawl(
+        force_crawl=force_crawl,
+        skip_crawl=skip_crawl,
+        searching_path=searching_path,
+        crawled_recently=site_crawled_recently,
+    ):
         crawl_start_urls: Set[URL] = {query_url}
         existing_urls: List[str] = list(site.feeds.keys())
 

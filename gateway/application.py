@@ -219,6 +219,7 @@ def search_api():
     return_opml = str_to_bool(request.args.get("opml", "false", type=str))
     force_crawl = str_to_bool(request.args.get("force", "false", type=str))
     check_feedly = str_to_bool(request.args.get("feedly", "true", type=str))
+    skip_crawl = str_to_bool(request.args.get("skip_crawl", "false", type=str))
 
     g.return_html = return_html
 
@@ -244,6 +245,7 @@ def search_api():
         check_feedly=check_feedly,
         force_crawl=force_crawl,
         check_all=check_all,
+        skip_crawl=skip_crawl,
     )
 
     search_time = int((time.perf_counter() - start_time) * 1000)
