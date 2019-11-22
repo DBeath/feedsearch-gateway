@@ -13,6 +13,8 @@ from gateway.schema.dynamodb_sitepath_schema import DynamoDbSitePathSchema
 from gateway.schema.sitehost import SiteHost
 from gateway.schema.sitepath import SitePath
 
+from sentry_sdk import capture_exception
+
 db_feed_schema = DynamoDbFeedInfoSchema(many=True)
 db_site_schema = DynamoDbSiteSchema()
 db_path_schema = DynamoDbSitePathSchema()
@@ -33,6 +35,7 @@ def db_load_site_feeds(table, site: Union[str, SiteHost]) -> SiteHost:
         duration = int((time.perf_counter() - query_start) * 1000)
         logger.debug("Site Query: key=%s duration=%d", key, duration)
     except ClientError as e:
+        capture_exception(e)
         logger.error(e)
         return site
 
@@ -62,6 +65,7 @@ def db_load_site_path(table, site_path: SitePath) -> SitePath:
             KeyConditionExpression=Key("PK").eq(key) & Key("SK").eq(sort_key)
         )
     except ClientError as e:
+        capture_exception(e)
         logger.error(e)
         return site_path
 
@@ -96,7 +100,8 @@ def db_save_site_feeds(
             batch.put_item(dumped_site_path)
             for item in dumped_feeds:
                 batch.put_item(Item=item)
-    except ClientError as e:
+    except (ClientError, ValidationError) as e:
+        capture_exception(e)
         logger.error(e)
 
 
@@ -106,6 +111,7 @@ def db_list_sites(table) -> List[Dict]:
             FilterExpression=Key("SK").begins_with(DynamoDbSiteSchema.sort_key_prefix)
         )
     except ClientError as e:
+        capture_exception(e)
         logger.error(e)
         return []
 
