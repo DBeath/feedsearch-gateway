@@ -4,17 +4,21 @@ from yarl import URL
 
 class NoneString(fields.String):
     def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
         if not isinstance(value, str):
-            raise ValidationError("value must be a string")
-        if not value.strip():
+            raise ValidationError("value must be a string or None")
+        if not value or not value.strip():
             return None
         return super(NoneString, self)._serialize(value, attr, obj, **kwargs)
 
 
 class URLField(fields.String):
     def _serialize(self, value, attr, obj, **kwargs):
+        if value is None:
+            return None
         if not isinstance(value, (URL, str)):
-            raise ValidationError("value must be a URL or string")
+            raise ValidationError("value must be a URL, string, or None")
         value = str(value)
         if not value.strip():
             return None
