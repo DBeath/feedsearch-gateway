@@ -14,6 +14,7 @@ class ExternalFeedInfoSchema(Schema):
     hubs = fields.List(NoneString(), allow_none=True)
     is_podcast = fields.Boolean(allow_none=True, default=False)
     is_push = fields.Boolean(allow_none=True, default=False)
+    item_count = fields.Integer(allow_none=True, strict=False, default=0)
     content_type = NoneString(allow_none=True)
     content_length = fields.Integer(allow_none=True, strict=False, default=0)
     bozo = fields.Integer(allow_none=True, strict=False, default=0)
