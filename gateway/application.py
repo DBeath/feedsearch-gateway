@@ -181,9 +181,9 @@ def get_site_feeds(url):
 
     :param url: URL of site
     """
-    url = remove_subdomains(url)
+    url: str = remove_subdomains(url)
 
-    site = db_load_site_feeds(db_table, url)
+    site: SiteHost = db_load_site_feeds(db_table, url)
 
     if site:
         try:
