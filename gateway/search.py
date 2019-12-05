@@ -15,7 +15,7 @@ from gateway.dynamodb_storage import (
     db_load_site_path,
 )
 from gateway.feedly import fetch_feedly_feeds, validate_feedly_urls
-from gateway.schema.customfeedinfo import CustomFeedInfo
+from gateway.schema.customfeedinfo import CustomFeedInfo, score_item
 from gateway.schema.sitehost import SiteHost
 from gateway.schema.sitepath import SitePath
 from gateway.utils import force_utc, remove_subdomains, remove_scheme, has_path
@@ -219,6 +219,7 @@ def run_search(
     all_feeds: List[CustomFeedInfo] = list(site.feeds.values())
 
     for feed in all_feeds:
+        score_item(feed, host)
         feed.host = site.host
         if feed.last_updated:
             feed.last_updated = force_utc(feed.last_updated)

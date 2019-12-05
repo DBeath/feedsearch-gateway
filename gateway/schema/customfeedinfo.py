@@ -46,18 +46,15 @@ class CustomFeedInfo(FeedInfo):
         info.__class__ = cls
 
 
-def score_item(item: FeedInfo, original_url: URL):
+def score_item(item: FeedInfo, query_host: str):
     score = 0
 
     url_str = str(item.url).lower()
 
     # -- Score Decrement --
 
-    if original_url:
-        host = remove_subdomains(original_url.host)
-
-        if host not in item.url.host:
-            score -= 20
+    if query_host and query_host not in item.url.host:
+        score -= 20
 
     # Decrement the score by every extra path in the url
     parts_len = len(item.url.parts)
@@ -72,8 +69,6 @@ def score_item(item: FeedInfo, original_url: URL):
         score -= 10
     if "alt" in url_str:
         score -= 7
-    if "comments" in url_str or "comments" in item.title.lower():
-        score -= 15
     if "feedburner" in url_str:
         score -= 10
 
@@ -84,6 +79,11 @@ def score_item(item: FeedInfo, original_url: URL):
         score += 10
     if "index" in url_str:
         score += 30
+
+    if "comments" in url_str or "comments" in item.title.lower():
+        score -= 15
+    else:
+        score += int(item.velocity)
 
     if any(map(url_str.count, ["/home", "/top", "/most", "/magazine"])):
         score += 10
