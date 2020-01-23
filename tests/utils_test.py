@@ -1,5 +1,6 @@
 from yarl import URL
 
+from gateway.exceptions import BadRequestError
 from gateway.utils import (
     datetime_to_isoformat,
     datestring_to_utc_datetime,
@@ -7,9 +8,11 @@ from gateway.utils import (
     truncate_integer,
     coerce_url,
     has_path,
+    validate_query,
 )
 from datetime import datetime
 from dateutil import tz
+import pytest
 
 
 def test_force_utc():
@@ -81,3 +84,26 @@ def test_has_path():
     assert has_path(URL("test.com/path/")) is True
     assert has_path(URL("test.com")) is True
     assert has_path(URL("test.com/")) is True
+
+
+def test_validate_query_raises_badrequest():
+    bad_queries = [
+        "blah",
+        "jsonfeed.org) WAITFOR DELAY '0:0:5' AND (5981=5981",
+        "http://##/",
+        "http://.",
+        "//a",
+        "http://-error-.invalid/",
+        "http://3628126748",
+    ]
+
+    for query in bad_queries:
+        with pytest.raises(BadRequestError):
+            validate_query(query)
+
+
+def test_validate_query():
+    good_queries = ["http://foo.com/blah_(wikipedia)#cite-1"]
+
+    for query in good_queries:
+        assert isinstance(validate_query(query), URL)

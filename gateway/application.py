@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import time
 from typing import Dict
 
@@ -30,10 +29,12 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
+from gateway.exceptions import BadRequestError
 from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
 from gateway.schema.external_site_schema import ExternalSiteSchema
+from gateway.schema.sitehost import SiteHost
 from gateway.search import run_search
-from gateway.utils import remove_subdomains, coerce_url
+from gateway.utils import remove_subdomains, validate_query
 
 sentry_initialised = False
 
@@ -126,18 +127,6 @@ def unhandled_exceptions(e, event, context):
     return True  # Prevent invocation retry
 
 
-class BadRequestError(Exception):
-    status_code = 400
-    name = "Bad Request"
-
-    def __init__(self, message=None):
-        Exception.__init__(self)
-        self.message = message or "Feedsearch cannot handle the provided request."
-
-    def to_dict(self):
-        return {"error": self.name, "message": self.message}
-
-
 @app.errorhandler(BadRequestError)
 def handle_bad_request(error):
     if g.get("return_html", False):
@@ -223,21 +212,9 @@ def search_api():
 
     g.return_html = return_html
 
-    if not query:
-        raise BadRequestError("No URL in Request")
+    url = validate_query(query)
 
     start_time = time.perf_counter()
-
-    if not re.search(r"[a-z0-9]{2,}\.[a-z0-9]{2,}", query):
-        raise BadRequestError(
-            f"Invalid URL: '{query}' is not supported as a searchable URL."
-        )
-
-    try:
-        url = coerce_url(query)
-    except Exception as e:
-        app.logger.error("Error parsing URL %s: %s", query, e)
-        raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
 
     feed_list, stats = run_search(
         db_table,

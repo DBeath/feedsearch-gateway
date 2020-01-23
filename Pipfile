@@ -16,6 +16,7 @@ pytest = "*"
 python-dateutil = "*"
 cssmin = "*"
 sentry-sdk = {extras = ["flask"],version = "*"}
+validators = "*"
 
 [requires]
 python_version = "3.7"

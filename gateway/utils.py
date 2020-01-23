@@ -4,6 +4,9 @@ from typing import Union
 
 from dateutil import tz, parser
 from yarl import URL
+from validators.url import url as url_validator
+from validators import ValidationFailure
+from gateway.exceptions import BadRequestError
 
 subdomain_regex = re.compile(r"^(feeds?|www|rss|api)\.", re.IGNORECASE)
 scheme_regex = re.compile(r"^[a-z]{2,5}://", re.IGNORECASE)
@@ -120,3 +123,33 @@ def has_path(url: URL) -> bool:
     :return: bool
     """
     return bool(url.path.strip("/"))
+
+
+def validate_query(query: str) -> URL:
+    """
+    Validates the query string as a URL, and returns the coerced URL.
+    Raises a BadRequestError if the query string is not a valid URL.
+
+    :param query: url query string
+    :return: URL
+    """
+    if not query:
+        raise BadRequestError("No URL in Request.")
+
+    if not re.search(r"[a-z0-9]{2,}\.[a-z0-9]{2,}", query):
+        raise BadRequestError(
+            f"Invalid URL: '{query}' is not supported as a searchable URL."
+        )
+
+    try:
+        url = coerce_url(query)
+        url.origin()
+    except (ValueError, AttributeError) as e:
+        raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
+
+    try:
+        url_validator(str(url))
+    except ValidationFailure:
+        raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
+
+    return url
