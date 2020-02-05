@@ -29,7 +29,7 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
-from gateway.exceptions import BadRequestError
+from gateway.exceptions import BadRequestError, NotFoundError
 from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
 from gateway.schema.external_site_schema import ExternalSiteSchema
 from gateway.schema.sitehost import SiteHost
@@ -128,6 +128,7 @@ def unhandled_exceptions(e, event, context):
 
 
 @app.errorhandler(BadRequestError)
+@app.errorhandler(NotFoundError)
 def handle_bad_request(error):
     if g.get("return_html", False):
         return render_template("error.html", name=error.name, message=error.message)
@@ -228,6 +229,9 @@ def search_api():
     search_time = int((time.perf_counter() - start_time) * 1000)
     stats["search_time"] = search_time
     app.logger.info("Ran search of %s in %dms", url, search_time)
+
+    if stats and 200 not in stats.get("status_codes"):
+        raise NotFoundError(f"No Response from URL: {url}")
 
     result: Dict = {}
     if feed_list:

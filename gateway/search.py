@@ -225,7 +225,12 @@ def run_search(
             feed.last_updated = force_utc(feed.last_updated)
 
     # Only upload new file if crawl occurred.
-    if crawled and app.config.get("DYNAMODB_TABLE"):
+    if (
+        crawled
+        and app.config.get("DYNAMODB_TABLE")
+        and crawl_stats
+        and 200 in crawl_stats.get("status_codes")
+    ):
         site_path.feeds = [str(feed.url) for feed in crawl_feed_list]
         site_path.last_seen = now
         save_start = time.perf_counter()
