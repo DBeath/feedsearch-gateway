@@ -106,24 +106,42 @@ def db_save_site_feeds(
 
 
 def db_list_sites(table) -> List[Dict]:
+    sites = []
+
+    def append_sites(sites: List, response) -> None:
+        for item in response["Items"]:
+            try:
+                site = {"host": item.get("host"), "last_seen": item.get("last_seen")}
+                sites.append(site)
+            except KeyError as e:
+                logger.error("Missing required value: %s", e)
+
     try:
-        resp = table.scan(
+        response = table.scan(
             FilterExpression=Key("SK").begins_with(DynamoDbSiteSchema.sort_key_prefix)
         )
+
+        if "Items" not in response:
+            return sites
+
+        append_sites(sites, response)
+
+        while "LastEvaluatedKey" in response:
+            response = table.scan(
+                FilterExpression=Key("SK").begins_with(
+                    DynamoDbSiteSchema.sort_key_prefix
+                ),
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+            )
+
+            if "Items" not in response:
+                return sites
+
+            append_sites(sites, response)
+
     except ClientError as e:
         capture_exception(e)
         logger.error(e)
         return []
-
-    if not resp.items:
-        return []
-
-    sites = []
-    for item in resp.get("Items"):
-        try:
-            site = {"host": item.get("host"), "last_seen": item.get("last_seen")}
-            sites.append(site)
-        except KeyError as e:
-            logger.error("Missing required value: %s", e)
 
     return sites
