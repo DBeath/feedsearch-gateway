@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 
 from dateutil import tz
 from yarl import URL
@@ -19,19 +18,15 @@ def test_sitefeed_schema_loads(sitefeed_schema, sitefeed_json):
     assert sitefeed["host"] == "xkcd.com"
     assert sitefeed["last_seen"]
     assert len(sitefeed["feeds"]) == 2
-    feed1 = sitefeed["feeds"][0]
+    feed1 = sitefeed["feeds"]["https://xkcd.com/rss.xml"]
     assert feed1
     assert isinstance(feed1, CustomFeedInfo)
     assert feed1.title == "xkcd.com"
     assert feed1.version == "rss20"
-    feed2 = sitefeed["feeds"][1]
+    feed2 = sitefeed["feeds"]["https://xkcd.com/atom.xml"]
     assert isinstance(feed2, CustomFeedInfo)
     assert feed2.title == "xkcd.com"
     assert feed2.version == "atom10"
-
-
-def test_site_schema(sitefeed_json):
-    schema = DynamoDbSiteSchema()
 
 
 def test_feedinfo_schema_loads():

@@ -11,6 +11,20 @@ from gateway.exceptions import BadRequestError
 subdomain_regex = re.compile(r"^(feeds?|www|rss|api)\.", re.IGNORECASE)
 scheme_regex = re.compile(r"^[a-z]{2,5}://", re.IGNORECASE)
 
+# https://mathiasbynens.be/demo/url-regex
+
+valid_url_regex = re.compile(
+    r"^((?:https?|feed)://)?[\w.-]{2,255}(?:\.[\w.-]{2,255}){1,12}[\w\-._~:/?#[\]@!$&'()*+,;=]+$",
+    re.IGNORECASE,
+)
+
+basic_url_regex = re.compile(r"[a-z0-9]{2,}\.[a-z0-9]{2,}", re.IGNORECASE)
+
+diegoperini_url_regex = re.compile(
+    r"^(?:(?:https?|ftp)://)(?:\S+(?::\S*)?@)?(?:(?!10(?:\.\d{1,3}){3})(?!127(?:\.\d{1,3}){3})(?!169\.254(?:\.\d{1,3}){2})(?!192\.168(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]+-?)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:/[^\s]*)?\$_iuS",
+    re.IGNORECASE,
+)
+
 
 def force_utc(dt: datetime) -> datetime:
     """
@@ -136,7 +150,7 @@ def validate_query(query: str) -> URL:
     if not query:
         raise BadRequestError("No URL in Request.")
 
-    if not re.search(r"[a-z0-9]{2,}\.[a-z0-9]{2,}", query):
+    if not valid_url_regex.match(query):
         raise BadRequestError(
             f"Invalid URL: '{query}' is not supported as a searchable URL."
         )

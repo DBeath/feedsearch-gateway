@@ -93,17 +93,28 @@ def test_validate_query_raises_badrequest():
         "http://##/",
         "http://.",
         "//a",
-        "http://-error-.invalid/",
         "http://3628126748",
+        "curl%20-X%20GET%20%22https",
+        "jsonfeed.org'%20UNION%20ALL%20SELECT%20NULL,NULL,NULL,NULL",
+        "jsonfeed.org%20AND%20SLEEP(5)--%20JjtF",
+        "jsonfeed.org)%20ORDER%20BY%201",
+        "jsonfeed.org')%20AND%207639=6868%20AND%20('KskU'='KskU",
+        "jsonfeed.org)%20AND%20(SELECT%204505%20FROM(SELECT%20COUNT(*),CONCAT(0x71707a6a71,(SELECT%20(ELT(4505=4505,1))),0x7178787a71,FLOOR(RAND(0)*2))x%20FROM%20INFORMATION_SCHEMA.CHARACTER_SETS%20GROUP%20BY%20x)a)%20AND%20(5178=5178",
     ]
 
     for query in bad_queries:
         with pytest.raises(BadRequestError):
             validate_query(query)
+            print(query)
 
 
 def test_validate_query():
-    good_queries = ["http://foo.com/blah_(wikipedia)#cite-1"]
+    good_queries = [
+        "test.com",
+        "http://test.com",
+        "http://test.com?query=test",
+        "http://foo.com/blah_(wikipedia)#cite-1",
+    ]
 
     for query in good_queries:
         assert isinstance(validate_query(query), URL)
