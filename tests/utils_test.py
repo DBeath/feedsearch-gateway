@@ -1,3 +1,7 @@
+from datetime import datetime
+
+import pytest
+from dateutil import tz
 from yarl import URL
 
 from gateway.exceptions import BadRequestError
@@ -9,10 +13,8 @@ from gateway.utils import (
     coerce_url,
     has_path,
     validate_query,
+    no_response_from_crawl,
 )
-from datetime import datetime
-from dateutil import tz
-import pytest
 
 
 def test_force_utc():
@@ -118,3 +120,13 @@ def test_validate_query():
 
     for query in good_queries:
         assert isinstance(validate_query(query), URL)
+
+
+def test_no_response_from_crawl():
+    assert no_response_from_crawl(None) is False
+    assert no_response_from_crawl({}) is False
+    assert no_response_from_crawl({"status_codes": []}) is False
+    assert no_response_from_crawl({"status_codes": None}) is False
+    assert no_response_from_crawl({"status_codes": [500]}) is False
+    assert no_response_from_crawl({"status_codes": {500: 1}}) is True
+    assert no_response_from_crawl({"status_codes": {200: 1, 500: 2}}) is False

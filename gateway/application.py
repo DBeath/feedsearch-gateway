@@ -27,6 +27,7 @@ from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.middleware.proxy_fix import ProxyFix
+from yarl import URL
 
 from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
 from gateway.exceptions import BadRequestError, NotFoundError
@@ -34,7 +35,7 @@ from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
 from gateway.schema.external_site_schema import ExternalSiteSchema
 from gateway.schema.sitehost import SiteHost
 from gateway.search import run_search
-from gateway.utils import remove_subdomains, validate_query
+from gateway.utils import remove_subdomains, validate_query, no_response_from_crawl
 
 sentry_initialised = False
 
@@ -213,7 +214,7 @@ def search_api():
 
     g.return_html = return_html
 
-    url = validate_query(query)
+    url: URL = validate_query(query)
 
     start_time = time.perf_counter()
 
@@ -230,7 +231,7 @@ def search_api():
     stats["search_time"] = search_time
     app.logger.info("Ran search of %s in %dms", url, search_time)
 
-    if stats and 200 not in stats.get("status_codes"):
+    if not feed_list and no_response_from_crawl(stats):
         raise NotFoundError(f"No Response from URL: {url}")
 
     result: Dict = {}

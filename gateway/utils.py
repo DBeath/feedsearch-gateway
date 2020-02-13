@@ -1,12 +1,12 @@
 import re
 from datetime import datetime
-from typing import Union
+from typing import Union, Optional, Dict
 
 from dateutil import tz, parser
 from yarl import URL
 from validators.url import url as url_validator
 from validators import ValidationFailure
-from gateway.exceptions import BadRequestError
+from gateway.exceptions import BadRequestError, NotFoundError
 
 subdomain_regex = re.compile(r"^(feeds?|www|rss|api)\.", re.IGNORECASE)
 scheme_regex = re.compile(r"^[a-z]{2,5}://", re.IGNORECASE)
@@ -167,3 +167,20 @@ def validate_query(query: str) -> URL:
         raise BadRequestError(f"Invalid URL: Unable to parse '{query}' as a URL.")
 
     return url
+
+
+def no_response_from_crawl(stats: Optional[Dict]) -> bool:
+    """
+    Check that the stats dict has received an HTTP 200 response
+
+    :param stats: Crawl stats dictionary
+    :return: True if the dict exists and has no 200 response
+    """
+    if not stats or not isinstance(stats, Dict):
+        return False
+
+    status_codes = stats.get("status_codes", {})
+    if not status_codes or not isinstance(status_codes, Dict):
+        return False
+
+    return 200 not in status_codes
