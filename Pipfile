@@ -12,14 +12,18 @@ flask-assets = "*"
 feedsearch-crawler = "*"
 udatetime = "*"
 boto3 = "*"
-pytest = "*"
 cssmin = "*"
 sentry-sdk = {extras = ["flask"],version = "*"}
 validators = "*"
 python-dateutil = "*"
+feedparser = "~=5.2"
 
 [requires]
 python_version = "3.7"
+
+[dev-packages]
+black = "*"
+pytest = "*"
 
 [pipenv]
 allow_prereleases = true
