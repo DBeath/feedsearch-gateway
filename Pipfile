@@ -17,6 +17,7 @@ sentry-sdk = {extras = ["flask"],version = "*"}
 validators = "*"
 python-dateutil = "*"
 feedparser = "~=5.2"
+werkzeug = "*"
 
 [requires]
 python_version = "3.7"

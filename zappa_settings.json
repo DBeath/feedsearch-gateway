@@ -15,8 +15,7 @@
             "FLASK_S3_BUCKET_NAME": "zappa-mrxw2pac1",
             "USER_AGENT": "Feedsearch-Gateway"
         },
-        "binary_support": false,
-        "domain": "feedsearch.dev"
+        "binary_support": false
     },
     "production": {
         "app_function": "gateway.application.app",
