@@ -104,29 +104,28 @@ def remove_scheme(url: Union[URL, str]) -> str:
     return scheme_regex.sub("", url.strip(), count=1)
 
 
-def coerce_url(url: Union[URL, str], https: bool = False) -> URL:
+def coerce_url(url: str, https: bool = False) -> URL:
     """
     Coerce URL to valid format
 
-    :param url: URL
+    :param url: URL as string
     :param https: Force https if no scheme in url
     :return: str
     """
-    if isinstance(url, str):
-        url = URL(url.strip())
+    url = url.strip()
+    coerced_url = URL(url)
 
     scheme = "https" if https else "http"
 
-    if not url.is_absolute():
-        url_string = str(url)
-        split = url_string.split("/", 1)
-        url = URL.build(scheme=scheme, host=split[0])
-        if len(split) > 1:
-            url = url.with_path(split[1])
-    elif url.scheme == "http" and https:
-        url = url.with_scheme(scheme)
+    if not coerced_url.is_absolute():
+        url = url.lstrip(':/')
+        url = f"{scheme}://{url}"
+        coerced_url = URL(url)
 
-    return url
+    elif coerced_url.scheme == "http" and https:
+        coerced_url = coerced_url.with_scheme(scheme)
+
+    return coerced_url
 
 
 def has_path(url: URL) -> bool:

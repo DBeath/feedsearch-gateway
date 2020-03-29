@@ -19,7 +19,7 @@
         {% if feed.title %}
           <b>{{feed.title}}</b> :
         {% endif %}
-          <a href="{{feed.url}}" target="_blank">{{feed.url}}</a>
+          <a href="{{feed.url}}" target="_blank">{{feed.url.human_repr()}}</a>
       </li>
     {% endfor %}
   </ul>
