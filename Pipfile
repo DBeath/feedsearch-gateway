@@ -23,8 +23,4 @@ werkzeug = "*"
 python_version = "3.7"
 
 [dev-packages]
-black = "*"
 pytest = "*"
-
-[pipenv]
-allow_prereleases = true
