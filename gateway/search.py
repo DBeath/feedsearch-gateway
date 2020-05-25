@@ -136,7 +136,7 @@ def run_search(
         load_start = time.perf_counter()
         site = db_load_site_feeds(db_table, site)
         load_duration = int((time.perf_counter() - load_start) * 1000)
-        app.logger.debug(
+        app.logger.info(
             "Site DB Load: feeds=%d duration=%d", len(site.feeds), load_duration
         )
 
@@ -145,7 +145,7 @@ def run_search(
             load_start = time.perf_counter()
             site_path: SitePath = db_load_site_path(db_table, site_path)
             load_duration = int((time.perf_counter() - load_start) * 1000)
-            app.logger.debug(
+            app.logger.info(
                 "Sitepath DB Load: feeds=%d duration=%d",
                 len(site_path.feeds),
                 load_duration,

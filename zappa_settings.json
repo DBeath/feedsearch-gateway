@@ -15,7 +15,8 @@
             "FLASK_S3_BUCKET_NAME": "zappa-mrxw2pac1",
             "USER_AGENT": "Feedsearch-Gateway"
         },
-        "binary_support": false
+        "binary_support": false,
+        "log_level": "DEBUG"
     },
     "production": {
         "app_function": "gateway.application.app",
@@ -29,7 +30,8 @@
         "timeout_seconds": 20,
         "memory_size": 1024,
         "lambda_description": "Feedsearch Gateway production",
-        "exception_handler": "gateway.application.unhandled_exceptions"
+        "exception_handler": "gateway.application.unhandled_exceptions",
+        "log_level": "INFO"
     },
     "cloudprod": {
         "app_function": "gateway.application.app",
@@ -44,6 +46,7 @@
         "exception_handler": "gateway.application.unhandled_exceptions",
         "binary_support": false,
         "domain": "feedsearch.dev",
-        "apigateway_enabled": false
+        "apigateway_enabled": false,
+        "log_level": "INFO"
     }
 }

@@ -39,13 +39,12 @@ from gateway.utils import remove_subdomains, validate_query, no_response_from_cr
 
 sentry_initialised = False
 
-feedsearch_logger = logging.getLogger("feedsearch_crawler")
-feedsearch_logger.setLevel(logging.DEBUG)
-db_logger = logging.getLogger("dynamodb")
-db_logger.setLevel(logging.DEBUG)
-
+# Adds StreamHandler for local debugging with 'flask run'
 root_logger = logging.getLogger()
 if not root_logger.handlers:
+    feedsearch_logger = logging.getLogger("feedsearch_crawler")
+    db_logger = logging.getLogger("dynamodb")
+
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
@@ -54,6 +53,7 @@ if not root_logger.handlers:
     ch.setFormatter(formatter)
     feedsearch_logger.addHandler(ch)
     db_logger.addHandler(ch)
+    root_logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 

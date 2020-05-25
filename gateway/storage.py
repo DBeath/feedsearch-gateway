@@ -27,7 +27,7 @@ def upload_file(client, data, object_key, bucket_name):
             ACL="public-read",
         )
         dur = int((time.perf_counter() - start) * 1000)
-        app.logger.debug(
+        app.logger.info(
             "Uploaded: file=%s duration=%dms bytes=%d", object_name, dur, len(data)
         )
     except ClientError as e:

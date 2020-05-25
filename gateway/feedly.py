@@ -93,7 +93,7 @@ def validate_feedly_urls(
             except Exception as e:
                 app.logger.error("URL Parse error: %s", e)
 
-    app.logger.info("New Feedly urls: %s", new_urls)
+    app.logger.debug("New Feedly urls: %s", new_urls)
     return new_urls
 
 
@@ -106,7 +106,7 @@ def fetch_feedly_feeds(query: str) -> List[str]:
     """
     try:
         feed_urls: List[str] = asyncio.run(fetch_feedly(query))
-        app.logger.info("Feedly urls: %s", feed_urls)
+        app.logger.debug("Feedly urls: %s", feed_urls)
         return feed_urls
     except Exception as e:
         app.logger.exception("Search error: %s", e)
