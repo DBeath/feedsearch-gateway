@@ -14,7 +14,7 @@ scheme_regex = re.compile(r"^[a-z]{2,5}://", re.IGNORECASE)
 # https://mathiasbynens.be/demo/url-regex
 
 valid_url_regex = re.compile(
-    r"^((?:https?|feed)://)?[\w.-]{2,255}(?:\.[\w.-]{2,255}){1,12}[\w\-._~:/?#[\]@!$&'()*+,;=]+$",
+    r"^((?:https?|feed)://)?[\w.-]{2,255}(?:\.[\w.-]{1,255}){1,12}[\w\-._~:/?#[\]@!$&'()*+,;=]+$",
     re.IGNORECASE,
 )
 

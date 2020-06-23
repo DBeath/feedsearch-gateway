@@ -73,17 +73,24 @@ def test_coerce_url():
     assert coerce_url("test.com/path/path2", https=True) == URL(
         "https://test.com/path/path2"
     )
-    assert coerce_url("sénégal.info") == URL('http://sénégal.info')
+    assert coerce_url("sénégal.info") == URL("http://sénégal.info")
     assert coerce_url("sénégal.info", https=True) == URL("https://sénégal.info")
-    assert coerce_url("http://www.xn--sngal-bsab.info") == URL("http://www.xn--sngal-bsab.info")
+    assert coerce_url("http://www.xn--sngal-bsab.info") == URL(
+        "http://www.xn--sngal-bsab.info"
+    )
     assert coerce_url("xn--sngal-bsab.info") == URL("http://xn--sngal-bsab.info")
 
 
 def test_coerce_url_human_repr():
-    assert coerce_url("http://www.xn--sngal-bsab.info").human_repr() == "http://www.sénégal.info/"
+    assert (
+        coerce_url("http://www.xn--sngal-bsab.info").human_repr()
+        == "http://www.sénégal.info/"
+    )
     assert coerce_url("xn--sngal-bsab.info").human_repr() == "http://sénégal.info/"
-    assert coerce_url("sénégal.info").human_repr() == 'http://sénégal.info/'
-    assert coerce_url("sénégal.info", https=True).human_repr() == "https://sénégal.info/"
+    assert coerce_url("sénégal.info").human_repr() == "http://sénégal.info/"
+    assert (
+        coerce_url("sénégal.info", https=True).human_repr() == "https://sénégal.info/"
+    )
 
 
 def test_has_path():
@@ -127,11 +134,13 @@ def test_validate_query():
         "http://test.com",
         "http://test.com?query=test",
         "http://foo.com/blah_(wikipedia)#cite-1",
-        "sénégal.info"
+        "sénégal.info",
+        "swissinfo.ch",
     ]
 
     for query in good_queries:
-        assert isinstance(validate_query(query), URL)
+        result = validate_query(query)
+        assert isinstance(result, URL)
 
 
 def test_no_response_from_crawl():
