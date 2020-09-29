@@ -114,6 +114,7 @@ def initialise_sentry():
                 FlaskIntegration(),
                 AioHttpIntegration(),
             ],
+            traces_sample_rate=0.1
         )
         sentry_initialised = True
 

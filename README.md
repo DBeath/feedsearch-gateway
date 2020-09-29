@@ -16,7 +16,7 @@ The following environment variables are required:
 USER_AGENT="Mozilla/5.0 (compatible; Feedsearch-Crawler; +https://feedsearch.dev)"
 FLASK_S3_BUCKET_NAME="feedsearch-bucket"
 DYNAMODB_TABLE="feedsearch-table"
-SERVER_NAME="feedsearch.dev"
+SERVER_NAME="feedsearch.dev" #Exclude this value in dev for localhost
 ```
 
 - *USER_AGENT* : HTTP [User-Agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) string.

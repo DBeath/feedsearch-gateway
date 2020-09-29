@@ -18,9 +18,10 @@ validators = "*"
 python-dateutil = "*"
 feedparser = "~=5.2"
 werkzeug = "*"
+click = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"
 
 [dev-packages]
 pytest = "*"
