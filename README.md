@@ -50,17 +50,17 @@ flask run
 
 ## Deployment
 
-Deploy with:
-
-```bash
-zappa update production
-```
-
 Upload static assets to S3:
 
 ```bash
 export FLASK_APP=gateway/application.py
 
 flask upload
+```
+
+Deploy with:
+
+```bash
+zappa update production
 ```
 

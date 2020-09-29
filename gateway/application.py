@@ -98,6 +98,7 @@ css_assets = Bundle(
 )
 
 assets = Environment(app)
+assets.manifest = "json"
 assets.register("css_all", css_assets)
 
 dynamodb = boto3.resource("dynamodb")
@@ -114,7 +115,7 @@ def initialise_sentry():
                 FlaskIntegration(),
                 AioHttpIntegration(),
             ],
-            traces_sample_rate=0.1
+            traces_sample_rate=0.1,
         )
         sentry_initialised = True
 
@@ -314,11 +315,19 @@ def upload(env):
 
     app.config["FLASKS3_FORCE_MIMETYPE"] = True
 
-    flask_s3.create_all(
-        app,
-        user=current_credentials.access_key,
-        password=current_credentials.secret_key,
-        bucket_name=s3_bucket,
-        location=aws_region,
-        put_bucket_acl=False,
-    )
+    try:
+        css_assets.build()
+
+        flask_s3.create_all(
+            app,
+            user=current_credentials.access_key,
+            password=current_credentials.secret_key,
+            bucket_name=s3_bucket,
+            location=aws_region,
+            put_bucket_acl=False,
+        )
+        click.echo(
+            f"Uploaded assets to Bucket https://{s3_bucket}.s3.{aws_region}.amazonaws.com"
+        )
+    except Exception as e:
+        click.echo(f"Failed to upload assets: {e}")
