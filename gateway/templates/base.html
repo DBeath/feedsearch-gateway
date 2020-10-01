@@ -30,10 +30,15 @@
 
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
-  {% assets "css_all" %}
-    <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
-  {% endassets %}
-
+  {% if config.get("ASSETS_DEBUG") == True %}
+    {% assets "css_all" %}
+      <link rel="stylesheet" type="text/css" href="{{ ASSET_URL }}">
+    {% endassets %}
+  {% else %}
+    <style type="text/css">
+      {{ css_assets_built|safe }}
+    </style>
+  {% endif %}
 </head>
 <body>
   <div class="container">

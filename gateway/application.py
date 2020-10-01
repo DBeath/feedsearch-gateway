@@ -1,13 +1,13 @@
 import json
 import logging
 import os
-import time
 from typing import Dict
 
 import boto3
 import click
 import flask_s3
 import sentry_sdk
+import time
 from feedsearch_crawler import output_opml
 from flask import (
     Flask,
@@ -26,6 +26,7 @@ from marshmallow import ValidationError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
+from webassets.merge import FileHunk
 from werkzeug.middleware.proxy_fix import ProxyFix
 from yarl import URL
 
@@ -100,6 +101,10 @@ css_assets = Bundle(
 assets = Environment(app)
 assets.manifest = "json"
 assets.register("css_all", css_assets)
+
+if not app.config["ASSETS_DEBUG"]:
+    css = FileHunk(css_assets.resolve_output())
+    app.jinja_env.globals["css_assets_built"] = css.data()
 
 dynamodb = boto3.resource("dynamodb")
 db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
