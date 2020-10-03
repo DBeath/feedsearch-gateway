@@ -19,9 +19,7 @@ class DynamoDbSiteSchema(Schema, DynamoDBSchema, metaclass=SchemaDynamoDbMeta):
         return DynamoDbSiteSchema.create_primary_key(obj.host)
 
     def serialize_sort_key(self, obj):
-        if not obj.host:
-            raise ValidationError("Host value must exist.")
-        return self.create_sort_key(obj.host)
+        return self.create_sort_key("")
 
     # noinspection PyUnusedLocal
     @post_load

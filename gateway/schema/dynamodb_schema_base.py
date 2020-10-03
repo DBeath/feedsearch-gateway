@@ -25,11 +25,11 @@ class DynamoDBSchema(ABC):
         raise NotImplementedError
 
     @classmethod
-    def create_primary_key(cls, value) -> str:
+    def create_primary_key(cls, value: str) -> str:
         return f"{cls.primary_key_prefix}{value}"
 
     @classmethod
-    def create_sort_key(cls, value) -> str:
+    def create_sort_key(cls, value: str) -> str:
         return f"{cls.sort_key_prefix}{value}"
 
     class Meta:
