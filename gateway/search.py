@@ -1,14 +1,14 @@
 import asyncio
-import time
 from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Union, Set
 
 from dateutil.tz import tzutc
-from feedsearch_crawler import FeedsearchSpider, sort_urls
+from feedsearch_crawler import FeedsearchSpider, sort_urls, FeedInfo
 from flask import current_app as app
 from werkzeug.exceptions import abort
 from yarl import URL
 
+from gateway.dynamodb_client import DynamoDBClient
 from gateway.feedly import fetch_feedly_feeds, validate_feedly_urls
 from gateway.schema.customfeedinfo import CustomFeedInfo, score_item
 from gateway.schema.sitehost import SiteHost
@@ -24,7 +24,7 @@ def seen_recently(last_seen: datetime, days: int = 7) -> bool:
     return False
 
 
-def crawl(urls: List[URL], checkall) -> Tuple[list, dict]:
+def crawl(urls: List[URL], checkall) -> Tuple[List[FeedInfo], Dict]:
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=checkall,
@@ -99,146 +99,257 @@ def should_run_crawl(
     return False
 
 
-def run_search(
-    db_client,
-    query_url: URL,
-    check_feedly: bool = True,
-    force_crawl: bool = False,
-    check_all: bool = False,
-    skip_crawl: bool = False,
-) -> Tuple[List[CustomFeedInfo], Dict]:
-    """
-    Run a search of the query URL.
+class SearchRunner:
+    def __init__(
+        self,
+        db_client: DynamoDBClient,
+        check_feedly: bool = True,
+        force_crawl: bool = True,
+        check_all: bool = False,
+        skip_crawl: bool = True,
+        days_checked_recently: int = 7,
+    ):
+        self.db_client = db_client
+        self.check_feedly = check_feedly
+        self.force_crawl = force_crawl
+        self.check_all = check_all
+        self.skip_crawl = skip_crawl
+        self.days_checked_recently = days_checked_recently
+        self.searching_path: bool = False
+        self.host: str = ""
+        self.site = None
+        self.site_path = None
+        self.crawl_stats: Dict = {}
+        self.site_crawled_recently: bool = False
+        self.feeds: List[CustomFeedInfo] = []
+        self.crawl_feed_list: List[CustomFeedInfo] = []
+        self.upgraded_crawled_feeds: List[CustomFeedInfo] = []
+        self.crawled: bool = False
+        self.query_url: URL = URL()
 
-    :param db_client: DynamoDB Client
-    :param query_url: URL to be searched
-    :param check_feedly: Query Feedly for feeds matching the query url
-    :param force_crawl: Force a crawl of the query url
-    :param skip_crawl: Skip the crawl unless force_crawl is True
-    :param check_all: Check additional paths of the query url
-    :return: Tuple of List of Feeds and crawl stats
-    """
-    searching_path: bool = has_path(query_url)
-    # Remove certain feed or www. subdomains to get the root host domain. This way it's easier to match feeds
-    # that may be on specialised feed subdomains with the host website.
-    host: str = remove_subdomains(query_url.host)
+    def run_search(self, query_url: URL) -> List[CustomFeedInfo]:
+        """
+        Run a search crawl of the query URL for Feeds, querying the database for existing Feeds, and saving the results
+        of the crawl back to the database.
 
-    site = SiteHost(host)
-    site_path = SitePath(host, query_url.path)
-    crawl_stats: Dict = {}
+        :param query_url: Initial URL start the crawl
+        :return: List of found Feeds
+        """
+        self.query_url = query_url
+        self.searching_path = has_path(query_url)
+        # Remove certain feed or www. subdomains to get the root host domain. This way it's easier to match feeds
+        # that may be on specialised feed subdomains with the host website.
+        self.host: str = remove_subdomains(query_url.host)
 
-    if app.config.get("DYNAMODB_TABLE"):
-        load_start = time.perf_counter()
-        site = db_client.query_site_feeds(site)
-        load_duration = int((time.perf_counter() - load_start) * 1000)
-        app.logger.info(
-            "Site DB Load: feeds=%d duration=%d", len(site.feeds), load_duration
+        self.site = SiteHost(self.host)
+        self.site_path = SitePath(self.host, query_url.path)
+        self.crawl_stats: Dict = {}
+
+        # Query existing data for the site
+        existing_site = self.db_client.query_site_feeds(self.site)
+        if existing_site:
+            self.site = existing_site
+
+        # Query the site path info from DynamoDB
+        if self.should_query_site_path(
+            self.searching_path, bool(self.site.feeds), self.force_crawl
+        ):
+            self.check_site_path()
+
+        # Return previously found feeds if path has already been crawled recently.
+        if seen_recently(self.site_path.last_seen, self.days_checked_recently):
+            return self.match_existing_feeds_to_path(
+                self.site_path.feeds, self.site.feeds
+            )
+
+        # Calculate if the site was recently crawled.
+        self.site_crawled_recently = seen_recently(
+            self.site.last_seen, self.days_checked_recently
         )
 
-        # Check if the path has already been crawled recently, and if so return matching feeds.
-        if searching_path and site.feeds and not force_crawl:
-            load_start = time.perf_counter()
-            site_path: SitePath = db_client.query_site_path(site_path)
-            load_duration = int((time.perf_counter() - load_start) * 1000)
-            app.logger.info(
-                "Sitepath DB Load: feeds=%d duration=%d",
-                len(site_path.feeds),
-                load_duration,
-            )
+        # Crawl the site if the following conditions are met.
+        if should_run_crawl(
+            force_crawl=self.force_crawl,
+            skip_crawl=self.skip_crawl,
+            searching_path=self.searching_path,
+            crawled_recently=self.site_crawled_recently,
+        ):
+            crawl_start_urls: List[URL] = [query_url]
 
-            site_path_crawled_recently = seen_recently(
-                site_path.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
-            )
+            # Check Feedly for feed urls
+            if self.should_check_feedly(self.check_feedly, self.site_crawled_recently):
+                feedly_urls = self.run_feedly_check(query_url)
+                crawl_start_urls.extend(feedly_urls)
 
-            # Return previously found feeds if path has already been crawled recently.
-            if site_path_crawled_recently:
-                matching_feeds: Set[CustomFeedInfo] = set()
-                for url in site_path.feeds:
-                    feed = site.feeds.get(url)
-                    if feed:
-                        matching_feeds.add(feed)
-
-                return list(matching_feeds), crawl_stats
-
-    # Calculate if the site was recently crawled.
-    site_crawled_recently = seen_recently(
-        site.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
-    )
-
-    crawl_feed_list: List[CustomFeedInfo] = []
-    crawled = False
-
-    # Crawl the site if the following conditions are met.
-    if should_run_crawl(
-        force_crawl=force_crawl,
-        skip_crawl=skip_crawl,
-        searching_path=searching_path,
-        crawled_recently=site_crawled_recently,
-    ):
-        crawl_start_urls: Set[URL] = {query_url}
-        existing_urls: List[str] = list(site.feeds.keys())
-
-        # Fetch feeds from feedly.com
-        if check_feedly and not site_crawled_recently:
-            feedly_urls = fetch_feedly_feeds(str(query_url))
-            if feedly_urls:
-                crawl_start_urls.update(
-                    validate_feedly_urls(feedly_urls, existing_urls, host)
+            # Check each feed again if it has not been crawled recently.
+            if not self.searching_path:
+                crawl_start_urls.extend(
+                    self.filter_feeds_to_crawl(
+                        list(self.site.feeds.values()), self.days_checked_recently
+                    )
                 )
 
-        # Check each feed again if it has not been crawled recently.
-        if not searching_path:
-            for feed in site.feeds.values():
-                if not seen_recently(
-                    feed.last_seen, app.config.get("DAYS_CHECKED_RECENTLY")
-                ):
-                    crawl_start_urls.add(feed.url)
+            # Crawl the start urls.
+            self.crawl_feed_list, self.crawl_stats = crawl(
+                list(crawl_start_urls), self.check_all
+            )
+            self.crawled = True
 
-        # Crawl the start urls.
-        crawl_feed_list, crawl_stats = crawl(list(crawl_start_urls), check_all)
-        crawled = True
+        now: datetime = force_utc(datetime.now(tzutc()))
+        self.site.last_seen = now
 
-    now = force_utc(datetime.now(tzutc()))
-    site.last_seen = now
-
-    for feed in crawl_feed_list:
-        CustomFeedInfo.upgrade_feedinfo(feed)
-        feed.last_seen = now
-        feed.host = site.host
-        existing_feed = site.feeds.get(str(feed.url))
-        if existing_feed:
-            feed.merge(existing_feed)
-        if feed.is_valid:
-            site.feeds[str(feed.url)] = feed
-
-    all_feeds: List[CustomFeedInfo] = list(site.feeds.values())
-
-    for feed in all_feeds:
-        score_item(feed, host)
-        feed.host = site.host
-        if feed.last_updated:
-            feed.last_updated = force_utc(feed.last_updated)
-
-    # Only upload new file if crawl occurred.
-    if (
-        crawled
-        and app.config.get("DYNAMODB_TABLE")
-        and crawl_stats
-        and 200 in crawl_stats.get("status_codes")
-    ):
-        site_path.feeds = [str(feed.url) for feed in crawl_feed_list]
-        site_path.last_seen = now
-        save_start = time.perf_counter()
-        db_client.save_site_feeds(site, all_feeds, site_path)
-        save_duration = int((time.perf_counter() - save_start) * 1000)
-        app.logger.info(
-            "Site DB Save: feeds=%d duration=%d", len(all_feeds), save_duration
+        # Update the crawled feeds with site info
+        self.upgraded_crawled_feeds = self.update_crawled_feeds(
+            self.crawl_feed_list, self.site, now
         )
 
-    # If the requested URL has a path component, then only return the feeds found from the crawl.
-    if searching_path:
-        feed_list = crawl_feed_list
-    else:
-        feed_list = all_feeds
+        all_feeds: List[CustomFeedInfo] = list(self.site.feeds.values())
 
-    return feed_list, crawl_stats
+        # Score the feeds
+        self.score_feeds(all_feeds, self.site.host)
+
+        # Only upload new file if crawl occurred.
+        if (
+            self.crawled
+            and self.crawl_stats
+            and 200 in self.crawl_stats.get("status_codes")
+        ):
+            self.site_path.feeds = [
+                str(feed.url) for feed in self.upgraded_crawled_feeds
+            ]
+            self.site_path.last_seen = now
+            self.db_client.save_site_feeds(self.site, all_feeds, self.site_path)
+
+        # If the requested URL has a path component, then only return the feeds found from the crawl.
+        if self.searching_path:
+            return self.upgraded_crawled_feeds
+        else:
+            return all_feeds
+
+    @staticmethod
+    def score_feeds(feeds: List[CustomFeedInfo], host: str) -> None:
+        """
+        Score feeds according to the queried URL
+
+        :param feeds: List of feeds to score
+        :param host: Root domain of queried URL
+        """
+        for feed in feeds:
+            score_item(feed, host)
+            feed.host = host
+            if feed.last_updated:
+                feed.last_updated = force_utc(feed.last_updated)
+
+    @staticmethod
+    def update_crawled_feeds(
+        crawled_feeds: List[FeedInfo], site: SiteHost, now: datetime
+    ) -> List[CustomFeedInfo]:
+        """
+        Update the crawled feeds from FeedInfo to CustomFeedInfo, and add site info.
+        Return only valid feeds.
+
+        :param crawled_feeds: List of crawled FeedInfo objects
+        :param site: SiteHost
+        :param now: current datetime
+        :return: Upgraded CustomFeedInfo objects
+        """
+        upgraded_crawled_feeds: List[CustomFeedInfo] = []
+        for feed in crawled_feeds:
+            CustomFeedInfo.upgrade_feedinfo(feed)
+            feed: CustomFeedInfo
+            feed.last_seen = now
+            feed.host = site.host
+
+            if existing_feed := site.feeds.get(str(feed.url)):
+                feed.merge(existing_feed)
+
+            if feed.is_valid:
+                site.feeds[str(feed.url)] = feed
+                upgraded_crawled_feeds.append(feed)
+
+        return upgraded_crawled_feeds
+
+    @staticmethod
+    def filter_feeds_to_crawl(
+        feeds: List[CustomFeedInfo], days_checked_recently: int
+    ) -> List[URL]:
+        """
+        Filter existing feeds to crawl according to how recently they've been crawled.
+
+        :param feeds: List of existing feeds
+        :param days_checked_recently: How recently a feed is allowed to have been crawled in days
+        :return: Feeds to add to initial crawl list
+        """
+        crawl_feeds: List[URL] = []
+        for feed in feeds:
+            if not seen_recently(feed.last_seen, days_checked_recently):
+                crawl_feeds.append(feed.url)
+        return crawl_feeds
+
+    @staticmethod
+    def should_query_site_path(
+        searching_path: bool, has_site_feeds: bool, force_crawl: bool
+    ) -> bool:
+        """
+        Check if existing site path information should be queried.
+
+        :param searching_path: Current search path
+        :param has_site_feeds: Whether the current site has existing found feeds
+        :param force_crawl: If the crawl should be forced regardless
+        :return: True if the path should be queried
+        """
+        return searching_path and has_site_feeds and not force_crawl
+
+    def check_site_path(self) -> None:
+        """
+        Query the database for existing site path information
+        """
+        existing_site_path = self.db_client.query_site_path(self.site_path)
+        if existing_site_path:
+            self.site_path = existing_site_path
+
+    @staticmethod
+    def should_check_feedly(check_feedly: bool, site_crawled_recently: bool) -> bool:
+        """
+        Check if Feedly should be queried for feed urls
+
+        :param check_feedly: Whether Feedly should be queried
+        :param site_crawled_recently: Whether the site has already been crawled recently
+        :return: True if Feedly should be queried
+        """
+        return check_feedly and not site_crawled_recently
+
+    def run_feedly_check(self, query_url: URL) -> List[URL]:
+        """
+        Fetch list of feed URLs from feedly.com for the given query URL
+
+        :return: List of URLs
+        """
+        existing_urls: List[str] = list(self.site.feeds.keys())
+        feedly_urls = fetch_feedly_feeds(str(query_url))
+        if not feedly_urls:
+            return []
+
+        validated_feedly_urls = validate_feedly_urls(
+            existing_urls=existing_urls, feedly_urls=feedly_urls, host=self.host
+        )
+        return validated_feedly_urls
+
+    @staticmethod
+    def match_existing_feeds_to_path(
+        site_path_feeds: List[str], site_feeds: Dict[str, CustomFeedInfo]
+    ) -> List[CustomFeedInfo]:
+        """
+        Matches previously found feeds at this site to the current site path
+
+        :param site_path_feeds: List of feeds previously found at this query path
+        :param site_feeds: List of all feeds found at this site
+        :return: Matched feeds
+        """
+        matching_feeds: Set[CustomFeedInfo] = set()
+        for url in site_path_feeds:
+            feed = site_feeds.get(url)
+            if feed:
+                matching_feeds.add(feed)
+
+        return list(matching_feeds)

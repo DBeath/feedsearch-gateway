@@ -1,9 +1,6 @@
 from datetime import datetime
 
 from feedsearch_crawler import FeedInfo
-from yarl import URL
-
-from gateway.utils import remove_subdomains
 
 
 class CustomFeedInfo(FeedInfo):

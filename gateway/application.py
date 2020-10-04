@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Dict
+from typing import Dict, List
 
 import boto3
 import click
@@ -32,10 +32,11 @@ from yarl import URL
 
 from gateway.dynamodb_client import DynamoDBClient
 from gateway.exceptions import BadRequestError, NotFoundError
+from gateway.schema.customfeedinfo import CustomFeedInfo
 from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
 from gateway.schema.external_site_schema import ExternalSiteSchema
 from gateway.schema.sitehost import SiteHost
-from gateway.search import run_search
+from gateway.search import SearchRunner
 from gateway.utils import remove_subdomains, validate_query, no_response_from_crawl
 
 sentry_initialised = False
@@ -224,14 +225,15 @@ def search_api():
 
     start_time = time.perf_counter()
 
-    feed_list, stats = run_search(
-        db_client,
-        url,
+    search_runner = SearchRunner(
+        db_client=db_client,
         check_feedly=check_feedly,
         force_crawl=force_crawl,
         check_all=check_all,
         skip_crawl=skip_crawl,
     )
+    feed_list: List[CustomFeedInfo] = search_runner.run_search(url)
+    stats = search_runner.crawl_stats
 
     search_time = int((time.perf_counter() - start_time) * 1000)
     stats["search_time"] = search_time

@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Set
 
 import aiohttp
 from flask import current_app as app
@@ -83,18 +83,18 @@ def validate_feedly_urls(
     :param host: host domain of the query
     :return: List of new URL objects
     """
-    new_urls: List[URL] = []
+    new_urls: Set[URL] = set()
     for url in feedly_urls:
         if url not in existing_urls:
             try:
                 parsed_url = URL(url)
                 if remove_subdomains(parsed_url.host) == host:
-                    new_urls.append(parsed_url)
+                    new_urls.add(parsed_url)
             except Exception as e:
                 app.logger.error("URL Parse error: %s", e)
 
     app.logger.debug("New Feedly urls: %s", new_urls)
-    return new_urls
+    return list(new_urls)
 
 
 def fetch_feedly_feeds(query: str) -> List[str]:
