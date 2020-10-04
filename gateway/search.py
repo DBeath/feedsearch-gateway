@@ -9,11 +9,6 @@ from flask import current_app as app
 from werkzeug.exceptions import abort
 from yarl import URL
 
-from gateway.dynamodb_storage import (
-    db_load_site_feeds,
-    db_save_site_feeds,
-    db_load_site_path,
-)
 from gateway.feedly import fetch_feedly_feeds, validate_feedly_urls
 from gateway.schema.customfeedinfo import CustomFeedInfo, score_item
 from gateway.schema.sitehost import SiteHost
@@ -105,7 +100,7 @@ def should_run_crawl(
 
 
 def run_search(
-    db_table,
+    db_client,
     query_url: URL,
     check_feedly: bool = True,
     force_crawl: bool = False,
@@ -115,7 +110,7 @@ def run_search(
     """
     Run a search of the query URL.
 
-    :param db_table: Dynamodb Table
+    :param db_client: DynamoDB Client
     :param query_url: URL to be searched
     :param check_feedly: Query Feedly for feeds matching the query url
     :param force_crawl: Force a crawl of the query url
@@ -134,7 +129,7 @@ def run_search(
 
     if app.config.get("DYNAMODB_TABLE"):
         load_start = time.perf_counter()
-        site = db_load_site_feeds(db_table, site)
+        site = db_client.query_site_feeds(site)
         load_duration = int((time.perf_counter() - load_start) * 1000)
         app.logger.info(
             "Site DB Load: feeds=%d duration=%d", len(site.feeds), load_duration
@@ -143,7 +138,7 @@ def run_search(
         # Check if the path has already been crawled recently, and if so return matching feeds.
         if searching_path and site.feeds and not force_crawl:
             load_start = time.perf_counter()
-            site_path: SitePath = db_load_site_path(db_table, site_path)
+            site_path: SitePath = db_client.query_site_path(site_path)
             load_duration = int((time.perf_counter() - load_start) * 1000)
             app.logger.info(
                 "Sitepath DB Load: feeds=%d duration=%d",
@@ -234,7 +229,7 @@ def run_search(
         site_path.feeds = [str(feed.url) for feed in crawl_feed_list]
         site_path.last_seen = now
         save_start = time.perf_counter()
-        db_save_site_feeds(db_table, site, all_feeds, site_path)
+        db_client.save_site_feeds(site, all_feeds, site_path)
         save_duration = int((time.perf_counter() - save_start) * 1000)
         app.logger.info(
             "Site DB Save: feeds=%d duration=%d", len(all_feeds), save_duration

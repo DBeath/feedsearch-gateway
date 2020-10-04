@@ -30,7 +30,7 @@ from webassets.merge import FileHunk
 from werkzeug.middleware.proxy_fix import ProxyFix
 from yarl import URL
 
-from gateway.dynamodb_storage import db_list_sites, db_load_site_feeds
+from gateway.dynamodb_client import DynamoDBClient
 from gateway.exceptions import BadRequestError, NotFoundError
 from gateway.schema.external_feedinfo_schema import ExternalFeedInfoSchema
 from gateway.schema.external_site_schema import ExternalSiteSchema
@@ -44,7 +44,7 @@ sentry_initialised = False
 root_logger = logging.getLogger()
 if not root_logger.handlers:
     feedsearch_logger = logging.getLogger("feedsearch_crawler")
-    db_logger = logging.getLogger("dynamodb")
+    db_logger = logging.getLogger("gateway.dynamodb_client")
 
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
@@ -106,8 +106,7 @@ if not app.config["ASSETS_DEBUG"]:
     css = FileHunk(css_assets.resolve_output())
     app.jinja_env.globals["css_assets_built"] = css.data()
 
-dynamodb = boto3.resource("dynamodb")
-db_table = dynamodb.Table(app.config.get("DYNAMODB_TABLE"))
+db_client = DynamoDBClient(app.config.get("DYNAMODB_TABLE"))
 
 
 def initialise_sentry():
@@ -168,7 +167,7 @@ def list_sites():
     """
     List all site URLs that have saved feed info.
     """
-    sites = db_list_sites(db_table)
+    sites = db_client.query_sites_list()
     return jsonify(sites)
 
 
@@ -181,7 +180,7 @@ def get_site_feeds(url):
     """
     url: str = remove_subdomains(url)
 
-    site: SiteHost = db_load_site_feeds(db_table, url)
+    site: SiteHost = db_client.query_site_feeds(url)
 
     if site:
         try:
@@ -226,7 +225,7 @@ def search_api():
     start_time = time.perf_counter()
 
     feed_list, stats = run_search(
-        db_table,
+        db_client,
         url,
         check_feedly=check_feedly,
         force_crawl=force_crawl,
