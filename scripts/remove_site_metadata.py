@@ -1,5 +1,6 @@
 import logging
 from typing import List, Dict
+import time
 
 import boto3
 import click
@@ -18,10 +19,10 @@ db_site_schema = DynamoDbSiteSchema()
 db_site_schema_many = DynamoDbSiteSchema(many=True)
 
 
-def load_sites(this_response) -> List[SiteHost]:
+def load_sites(items: List[Dict]) -> List[SiteHost]:
     sites: List[SiteHost] = []
 
-    for item in this_response["Items"]:
+    for item in items:
         try:
             site: SiteHost = db_site_schema.load(item)
             sites.append(site)
@@ -32,7 +33,7 @@ def load_sites(this_response) -> List[SiteHost]:
     return sites
 
 
-def write_sites(table, sites: List[SiteHost]) -> None:
+def write_sites(table, sites: List[SiteHost], items: List[Dict]) -> None:
     click.echo("Rewriting sites %s" % [site.host for site in sites])
 
     try:
@@ -43,14 +44,8 @@ def write_sites(table, sites: List[SiteHost]) -> None:
 
     try:
         with table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
-            for item in sites:
-                click.echo(item)
-                batch.delete_item(
-                    Key={
-                        "PK": DynamoDbSiteSchema.create_primary_key(item.host),
-                        "SK": DynamoDbSiteSchema.create_sort_key(item.host),
-                    }
-                )
+            for item in items:
+                batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
 
         with table.batch_writer(overwrite_by_pkeys=["PK", "SK"]) as batch:
             for item in dumped_sites:
@@ -58,6 +53,23 @@ def write_sites(table, sites: List[SiteHost]) -> None:
     except (ClientError, ValidationError) as e:
         logger.error(e)
         raise click.Abort()
+
+
+def process_response(table, response):
+    scanned = 0
+    rewritten_count = 0
+
+    if "Items" not in response:
+        click.echo("No items in response")
+        click.Abort()
+
+    if "ScannedCount" in response:
+        scanned += response["ScannedCount"]
+
+    sites = load_sites(response["Items"])
+    write_sites(table, sites, response["Items"])
+    rewritten_count += len(sites)
+    return scanned, rewritten_count
 
 
 @click.command()
@@ -75,17 +87,25 @@ def rewrite_metadata(table_name) -> None:
 
     rewritten_count = 0
 
+    queries = 0
+    scanned = 0
+    start = time.perf_counter()
+
     try:
         response = table.scan(
             FilterExpression=Key("SK").begins_with(DynamoDbSiteSchema.sort_key_prefix)
         )
+        queries += 1
 
-        if "Items" not in response:
-            return
+        q_scanned, q_rewritten = process_response(table, response)
+        scanned += q_scanned
+        rewritten_count += q_rewritten
 
-        sites = load_sites(response)
-        write_sites(table, sites)
-        rewritten_count += len(sites)
+        current_time = time.perf_counter()
+        duration_ms = int((current_time - start) * 1000)
+        click.echo(
+            f"Query: {queries}, Rewritten: {rewritten_count}, Scanned: {scanned}, Duration: {duration_ms}ms"
+        )
 
         while "LastEvaluatedKey" in response:
             response = table.scan(
@@ -94,19 +114,28 @@ def rewrite_metadata(table_name) -> None:
                 ),
                 ExclusiveStartKey=response["LastEvaluatedKey"],
             )
+            queries += 1
 
-            if "Items" not in response:
-                return
+            q_scanned, q_rewritten = process_response(table, response)
+            scanned += q_scanned
+            rewritten_count += q_rewritten
 
-            sites = load_sites(response)
-            write_sites(table, sites)
-            rewritten_count += len(sites)
+            current_time = time.perf_counter()
+            duration_ms = int((current_time - start) * 1000)
+            click.echo(
+                f"Query: {queries}, Rewritten: {rewritten_count}, Scanned: {scanned}, Duration: {duration_ms}ms"
+            )
 
     except ClientError as e:
         logger.exception(e)
         raise click.Abort()
     finally:
-        click.echo("Rewrote %d sites" % rewritten_count)
+        end = time.perf_counter()
+        duration_ms = int((end - start) * 1000)
+        click.echo(
+            f"Finished rewriting sites. Rewritten: {rewritten_count}, Queries: {queries}, Scanned: {scanned}, "
+            f"Duration: {duration_ms}ms, Table: {table_name}"
+        )
 
 
 if __name__ == "__main__":
