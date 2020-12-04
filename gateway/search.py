@@ -25,6 +25,14 @@ def seen_recently(last_seen: datetime, days: int = 7) -> bool:
 
 
 def crawl(urls: List[URL], checkall) -> Tuple[List[FeedInfo], Dict]:
+    """
+    Call Feedsearch Crawler and return the results and crawl stats.
+
+    :param urls: List of initial URLs to crawl
+    :param checkall: If True, will check all standard Feed URL locations
+    :return: List of found FeedInfo, Dict of crawl stats
+    """
+
     async def run_crawler():
         spider = FeedsearchSpider(
             try_urls=checkall,

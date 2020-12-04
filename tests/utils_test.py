@@ -131,6 +131,7 @@ def test_validate_query_raises_badrequest():
 def test_validate_query():
     good_queries = [
         "test.com",
+        "  test.com   ",
         "http://test.com",
         "http://test.com?query=test",
         "http://foo.com/blah_(wikipedia)#cite-1",

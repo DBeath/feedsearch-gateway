@@ -118,7 +118,7 @@ def coerce_url(url: str, https: bool = False) -> URL:
     scheme = "https" if https else "http"
 
     if not coerced_url.is_absolute():
-        url = url.lstrip(':/')
+        url = url.lstrip(":/")
         url = f"{scheme}://{url}"
         coerced_url = URL(url)
 
@@ -148,6 +148,8 @@ def validate_query(query: str) -> URL:
     """
     if not query:
         raise BadRequestError("No URL in Request.")
+
+    query = query.strip()
 
     if not valid_url_regex.match(query):
         raise BadRequestError(
