@@ -16,7 +16,7 @@ cssmin = "*"
 sentry-sdk = {extras = ["flask"],version = "*"}
 validators = "*"
 python-dateutil = "*"
-feedparser = "~=5.2"
+feedparser = "*"
 werkzeug = "*"
 click = "*"
 
