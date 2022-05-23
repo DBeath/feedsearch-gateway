@@ -2,7 +2,7 @@
     "dev": {
         "app_function": "gateway.application.app",
         "aws_region": "us-west-2",
-        "profile_name": "default",
+        "profile_name": "safeadmin2",
         "project_name": "feedsearch-gate",
         "runtime": "python3.8",
         "s3_bucket": "zappa-mrxw2pac1",
@@ -21,7 +21,7 @@
     "production": {
         "app_function": "gateway.application.app",
         "aws_region": "us-west-2",
-        "profile_name": "default",
+        "profile_name": "safeadmin2",
         "project_name": "feedsearch-gate",
         "runtime": "python3.8",
         "s3_bucket": "zappa-mrxw2pac1",
@@ -36,7 +36,7 @@
     "cloudprod": {
         "app_function": "gateway.application.app",
         "aws_region": "us-west-2",
-        "profile_name": "default",
+        "profile_name": "safeadmin2",
         "project_name": "feedsearch-gate",
         "runtime": "python3.8",
         "s3_bucket": "zappa-mrxw2pac1",

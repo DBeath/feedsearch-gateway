@@ -71,5 +71,15 @@ function showhide() {
     }
   }
 }
+
+function copyResults(data) {
+    navigator.clipboard.writeText(data).then(function() {
+        console.log('Results copied to clipboard');
+        /* clipboard successfully set */
+    }, function(err) {
+        /* clipboard write failed */
+        console.log(`Failed copy to clipboard ${err}`);
+    });
+}
 </script>
 {% endblock %}
